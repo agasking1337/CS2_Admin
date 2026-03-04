@@ -1,0 +1,19 @@
+{
+  "CS2AdminMaps": {
+    "Version": 1,
+    "Maps": {
+      "de_dust2": "Dust 2",
+      "de_mirage": "Mirage",
+      "de_inferno": "Inferno",
+      "de_ancient": "Ancient",
+      "de_anubis": "Anubis",
+      "de_train": "Train",
+      "de_nuke": "Nuke",
+      "de_overpass": "Overpass",
+      "de_vertigo": "Vertigo"
+    },
+    "WorkshopMaps": {
+      "Inferno Online": 3549919360
+    }
+  }
+}

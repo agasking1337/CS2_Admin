@@ -1,0 +1,213 @@
+{
+  "CS2AdminCommands": {
+    "Version": 1,
+    "AdminMenu": [
+      "admin"
+    ],
+    "AdminRoot": [
+      "admin"
+    ],
+    "Asay": [
+      "asay"
+    ],
+    "Say": [
+      "say"
+    ],
+    "Psay": [
+      "psay"
+    ],
+    "Csay": [
+      "csay"
+    ],
+    "Hsay": [
+      "hsay"
+    ],
+    "CallAdmin": [
+      "calladmin"
+    ],
+    "Report": [
+      "report"
+    ],
+    "AdminTime": [
+      "admintime"
+    ],
+    "AdminTimeSend": [
+      "admintimesend"
+    ],
+    "AdminReload": [
+      "adminreload"
+    ],
+    "AddAdmin": [
+      "addadmin"
+    ],
+    "EditAdmin": [
+      "editadmin"
+    ],
+    "RemoveAdmin": [
+      "removeadmin"
+    ],
+    "ListAdmins": [
+      "listadmins",
+      "admins"
+    ],
+    "AddGroup": [
+      "addgroup"
+    ],
+    "EditGroup": [
+      "editgroup"
+    ],
+    "RemoveGroup": [
+      "removegroup"
+    ],
+    "ListGroups": [
+      "listgroups"
+    ],
+    "Ban": [
+      "ban"
+    ],
+    "IpBan": [
+      "ipban"
+    ],
+    "LastBan": [
+      "lastban"
+    ],
+    "Warn": [
+      "warn"
+    ],
+    "Unwarn": [
+      "unwarn"
+    ],
+    "AddBan": [
+      "addban"
+    ],
+    "Unban": [
+      "unban"
+    ],
+    "Kick": [
+      "kick"
+    ],
+    "Slap": [
+      "slap"
+    ],
+    "Gag": [
+      "gag"
+    ],
+    "Ungag": [
+      "ungag"
+    ],
+    "Mute": [
+      "mute"
+    ],
+    "Unmute": [
+      "unmute"
+    ],
+    "Silence": [
+      "silence"
+    ],
+    "Unsilence": [
+      "unsilence"
+    ],
+    "Slay": [
+      "slay"
+    ],
+    "Respawn": [
+      "respawn"
+    ],
+    "ChangeTeam": [
+      "team"
+    ],
+    "NoClip": [
+      "noclip"
+    ],
+    "Goto": [
+      "goto"
+    ],
+    "Bring": [
+      "bring"
+    ],
+    "Freeze": [
+      "freeze"
+    ],
+    "Unfreeze": [
+      "unfreeze"
+    ],
+    "Resize": [
+      "resize"
+    ],
+    "Drug": [
+      "drug"
+    ],
+    "Burn": [
+      "burn"
+    ],
+    "Disarm": [
+      "disarm"
+    ],
+    "Speed": [
+      "speed",
+      "setspeed"
+    ],
+    "Gravity": [
+      "gravity",
+      "setgravity"
+    ],
+    "Rename": [
+      "rename"
+    ],
+    "Hp": [
+      "hp"
+    ],
+    "Money": [
+      "money",
+      "setmoney",
+      "givemoney"
+    ],
+    "Give": [
+      "give",
+      "giveitem"
+    ],
+    "Vote": [
+      "vote"
+    ],
+    "ChangeMap": [
+      "map"
+    ],
+    "ChangeWSMap": [
+      "wsmap"
+    ],
+    "RestartGame": [
+      "rr",
+      "restart"
+    ],
+    "HeadshotOn": [
+      "hson"
+    ],
+    "HeadshotOff": [
+      "hsoff"
+    ],
+    "BunnyOn": [
+      "bhopon",
+      "bunnyon"
+    ],
+    "BunnyOff": [
+      "bhopoff",
+      "bunnyoff"
+    ],
+    "RespawnOn": [
+      "respawnon"
+    ],
+    "RespawnOff": [
+      "respawnoff"
+    ],
+    "Rcon": [
+      "rcon"
+    ],
+    "Cvar": [
+      "cvar"
+    ],
+    "ListPlayers": [],
+    "Who": [
+      "who"
+    ]
+  }
+}

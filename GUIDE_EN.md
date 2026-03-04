@@ -1,5 +1,7 @@
 # CS2_ADMIN
 
+Plugin Version: `1.0.4`
+
 ## Features
 
 - Admin management
@@ -8,6 +10,17 @@
 - Calladmin system
 - Admin playtime system
 - Auto tag system
+
+## Config Versioning
+
+Main config files use schema versioning with `Version: 1`:
+
+- `config.json`
+- `commands.json`
+- `permissions.json`
+- `maps.json`
+
+If a config file has missing/wrong version (or invalid JSON), plugin deletes and regenerates it on next load.
 
 ## Console Commands
 
@@ -44,7 +57,18 @@ Use `sw_` commands in server console (without `!`).
 - `sw_bring <target>`
 - `sw_freeze <target> [seconds]`
 - `sw_unfreeze <target>`
+- `sw_resize <target> <scale>`
+- `sw_drug <target> [seconds]`
+- `sw_burn <target> [seconds] [damage_per_tick]`
+- `sw_disarm <target>`
+- `sw_speed <target> <multiplier>` / `sw_setspeed <target> <multiplier>`
+- `sw_gravity <target> <multiplier>` / `sw_setgravity <target> <multiplier>`
+- `sw_rename <target> <new_name>`
+- `sw_hp <target> <health>`
+- `sw_money <target> <amount>` / `sw_setmoney <target> <amount>` / `sw_givemoney <target> <amount>`
+- `sw_give <target> <item>` / `sw_giveitem <target> <item>`
 - `sw_who <target>`
+- `sw_vote "<question>" "<answer1>" "<answer2>" ...`
 - `sw_map <mapname>`
 - `sw_wsmap <workshop_id|name>`
 - `sw_rr [seconds]` / `sw_restart [seconds]`
@@ -89,7 +113,18 @@ Use `sw_` commands in server console (without `!`).
 - `!bring <target>`
 - `!freeze <target> [seconds]`
 - `!unfreeze <target>`
+- `!resize <target> <scale>`
+- `!drug <target> [seconds]`
+- `!burn <target> [seconds] [damage_per_tick]`
+- `!disarm <target>`
+- `!speed <target> <multiplier>` / `!setspeed <target> <multiplier>`
+- `!gravity <target> <multiplier>` / `!setgravity <target> <multiplier>`
+- `!rename <target> <new_name>`
+- `!hp <target> <health>`
+- `!money <target> <amount>` / `!setmoney <target> <amount>` / `!givemoney <target> <amount>`
+- `!give <target> <item>` / `!giveitem <target> <item>`
 - `!who <target>`
+- `!vote "<question>" "<answer1>" "<answer2>" ...`
 - `!map <mapname>`
 - `!wsmap <workshop_id|name>`
 - `!rr [seconds]` / `!restart [seconds]`
@@ -101,6 +136,13 @@ Use `sw_` commands in server console (without `!`).
 - `!admintime`
 - `!admintimesend`
 
+## Ban Behavior
+
+- `sw_ban` / `!ban` -> SteamID ban only.
+- `sw_ipban` / `!ipban` -> IP ban only.
+- `sw_addban` / `!addban` -> offline SteamID ban only.
+- `sw_unban` / `!unban` -> unban by SteamID or IP.
+
 ## 4) Permissions
 
 Default core permissions:
@@ -110,7 +152,7 @@ Default core permissions:
 - `admin.ban` -> ban/ipban/addban/unban/lastban.
 - `admin.kick` -> kick.
 - `admin.mute` -> mute/gag/silence.
-- `admin.cheats` -> slap/slay/respawn/team/noclip/goto/bring/freeze/unfreeze.
+- `admin.cheats` -> slap/slay/respawn/team/noclip/goto/bring/freeze/unfreeze/resize/drug/burn/disarm/speed/gravity/rename/hp/money/give.
 - `admin.rcon` -> rcon and server toggles (`hson/hsoff`, `bhopon/bhopoff`, `respawnon/respawnoff`).
 - `admin.cvar` -> `cvar`.
 - `Report` permission is empty by default (`""`), so `!report` is open to everyone unless changed.
@@ -125,7 +167,7 @@ Default core permissions:
 - `admin.generic`:
 - Most moderation and communication commands.
 - `admin` menu access.
-- `warn`, `unwarn`, `who`, `asay/say/psay/csay/hsay`, `admintime`, `map`, `wsmap`, `rr/restart`, `calladmin`, `listplayers`.
+- `warn`, `unwarn`, `who`, `asay/say/psay/csay/hsay`, `admintime`, `map`, `wsmap`, `rr/restart`, `calladmin`, `listplayers`, `vote`.
 
 - `admin.ban`:
 - `ban`, `ipban`, `addban`, `unban`, `lastban`.
@@ -137,7 +179,7 @@ Default core permissions:
 - `mute/unmute`, `gag/ungag`, `silence/unsilence`.
 
 - `admin.cheats`:
-- `slap`, `slay`, `respawn`, `team`, `noclip`, `goto`, `bring`, `freeze`, `unfreeze`.
+- `slap`, `slay`, `respawn`, `team`, `noclip`, `goto`, `bring`, `freeze`, `unfreeze`, `resize`, `drug`, `burn`, `disarm`, `speed`, `gravity`, `rename`, `hp`, `money`, `give`.
 
 - `admin.rcon`:
 - `rcon`, `hson/hsoff`, `bhopon/bhopoff`, `respawnon/respawnoff`.
@@ -189,8 +231,7 @@ sw_adminreload
 
 Online target player gets permissions and tag immediately.
 
-Note: With the current tag behavior, when admin is newly assigned, the tag may require
-the player to disconnect and reconnect to be shown reliably in tab.
+Note: Tag refresh now runs on join + delayed refresh + periodic refresh. In rare client-tab cache cases, reconnect may still be needed.
 
 ## 7) Target Formats
 
@@ -203,6 +244,12 @@ the player to disconnect and reconnect to be shown reliably in tab.
 ## 8) File Notes
 
 - `config.json` -> general settings.
+- `config.json` includes `Version` and language settings.
 - `commands.json` -> editable aliases.
+- `commands.json` includes `Version`.
+- `commands.json` `Ban` alias maps to `sw_ban` (console) and `!ban` (ingame), SteamID ban only.
+- `commands.json` `IpBan` alias maps to `sw_ipban` (console) and `!ipban` (ingame), IP ban only.
 - `permissions.json` -> permission mapping.
-- `resources/translations/tr.jsonc` and `en.jsonc` -> localization files.
+- `permissions.json` includes `Version`.
+- `maps.json` includes `Version` and both normal/workshop map lists.
+- `resources/translations/*.jsonc` -> localization files (`en`, `tr`, `de`, `fr`, `it`, `el`, `ru`, `bg`, `hu`).

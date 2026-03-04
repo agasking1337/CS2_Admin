@@ -1,5 +1,7 @@
 # CS2_ADMIN
 
+Eklenti Surumu: `1.0.4`
+
 ## Ozellikler
 
 - Admin management
@@ -8,6 +10,17 @@
 - Calladmin system
 - Admin playtime system
 - Auto tag system
+
+## Config Versionlama
+
+Ana config dosyalari `Version: 1` ile surumlenir:
+
+- `config.json`
+- `commands.json`
+- `permissions.json`
+- `maps.json`
+
+Bir dosyada surum eksik/yanlis ise (veya JSON bozuksa), eklenti dosyayi silip bir sonraki yuklemede yeniden olusturur.
 
 ## Console Commands
 
@@ -44,7 +57,18 @@ Use `sw_` commands in server console (without `!`).
 - `sw_bring <target>`
 - `sw_freeze <target> [seconds]`
 - `sw_unfreeze <target>`
+- `sw_resize <target> <scale>`
+- `sw_drug <target> [seconds]`
+- `sw_burn <target> [seconds] [damage_per_tick]`
+- `sw_disarm <target>`
+- `sw_speed <target> <multiplier>` / `sw_setspeed <target> <multiplier>`
+- `sw_gravity <target> <multiplier>` / `sw_setgravity <target> <multiplier>`
+- `sw_rename <target> <new_name>`
+- `sw_hp <target> <health>`
+- `sw_money <target> <amount>` / `sw_setmoney <target> <amount>` / `sw_givemoney <target> <amount>`
+- `sw_give <target> <item>` / `sw_giveitem <target> <item>`
 - `sw_who <target>`
+- `sw_vote "<soru>" "<cevap1>" "<cevap2>" ...`
 - `sw_map <mapname>`
 - `sw_wsmap <workshop_id|name>`
 - `sw_rr [seconds]` / `sw_restart [seconds]`
@@ -89,7 +113,18 @@ Use `sw_` commands in server console (without `!`).
 - `!bring <target>`
 - `!freeze <target> [seconds]`
 - `!unfreeze <target>`
+- `!resize <target> <scale>`
+- `!drug <target> [seconds]`
+- `!burn <target> [seconds] [damage_per_tick]`
+- `!disarm <target>`
+- `!speed <target> <multiplier>` / `!setspeed <target> <multiplier>`
+- `!gravity <target> <multiplier>` / `!setgravity <target> <multiplier>`
+- `!rename <target> <new_name>`
+- `!hp <target> <health>`
+- `!money <target> <amount>` / `!setmoney <target> <amount>` / `!givemoney <target> <amount>`
+- `!give <target> <item>` / `!giveitem <target> <item>`
 - `!who <target>`
+- `!vote "<soru>" "<cevap1>" "<cevap2>" ...`
 - `!map <mapname>`
 - `!wsmap <workshop_id|name>`
 - `!rr [seconds]` / `!restart [seconds]`
@@ -101,6 +136,13 @@ Use `sw_` commands in server console (without `!`).
 - `!admintime`
 - `!admintimesend`
 
+## Ban Davranisi
+
+- `sw_ban` / `!ban` -> yalnizca SteamID ban atar.
+- `sw_ipban` / `!ipban` -> yalnizca IP ban atar.
+- `sw_addban` / `!addban` -> yalnizca cevrimdisi SteamID ban atar.
+- `sw_unban` / `!unban` -> SteamID veya IP ile ban kaldirir.
+
 ## 4) Permissions
 
 Default core permissions:
@@ -110,7 +152,7 @@ Default core permissions:
 - `admin.ban` -> ban/ipban/addban/unban/lastban.
 - `admin.kick` -> kick.
 - `admin.mute` -> mute/gag/silence.
-- `admin.cheats` -> slap/slay/respawn/team/noclip/goto/bring/freeze/unfreeze.
+- `admin.cheats` -> slap/slay/respawn/team/noclip/goto/bring/freeze/unfreeze/resize/drug/burn/disarm/speed/gravity/rename/hp/money/give.
 - `admin.rcon` -> rcon ve sunucu toggle komutlari (`hson/hsoff`, `bhopon/bhopoff`, `respawnon/respawnoff`).
 - `admin.cvar` -> `cvar`.
 - `Report` permission varsayilan olarak bos (`""`) oldugu icin `!report` herkese aciktir (degistirilmezse).
@@ -125,7 +167,7 @@ Default core permissions:
 - `admin.generic`:
 - Most moderation and communication commands.
 - `admin` menu erisimi.
-- `warn`, `unwarn`, `who`, `asay/say/psay/csay/hsay`, `admintime`, `map`, `wsmap`, `rr/restart`, `calladmin`, `listplayers`.
+- `warn`, `unwarn`, `who`, `asay/say/psay/csay/hsay`, `admintime`, `map`, `wsmap`, `rr/restart`, `calladmin`, `listplayers`, `vote`.
 
 - `admin.ban`:
 - `ban`, `ipban`, `addban`, `unban`, `lastban`.
@@ -137,7 +179,7 @@ Default core permissions:
 - `mute/unmute`, `gag/ungag`, `silence/unsilence`.
 
 - `admin.cheats`:
-- `slap`, `slay`, `respawn`, `team`, `noclip`, `goto`, `bring`, `freeze`, `unfreeze`.
+- `slap`, `slay`, `respawn`, `team`, `noclip`, `goto`, `bring`, `freeze`, `unfreeze`, `resize`, `drug`, `burn`, `disarm`, `speed`, `gravity`, `rename`, `hp`, `money`, `give`.
 
 - `admin.rcon`:
 - `rcon`, `hson/hsoff`, `bhopon/bhopoff`, `respawnon/respawnoff`.
@@ -189,8 +231,7 @@ sw_adminreload
 
 Online target player gets permissions and tag immediately.
 
-Not: Mevcut tag davranisinda yeni admin eklenen oyuncuda tab tag'i bazen kesin gorunum icin
-oyuncunun cikis-giris yapmasini gerektirebilir.
+Not: Tag yenileme join + gecikmeli yenileme + periyodik yenileme ile guclendirildi. Nadir tab-cache durumunda cikis-giris yine gerekebilir.
 
 ## 7) Target Formats
 
@@ -203,6 +244,12 @@ oyuncunun cikis-giris yapmasini gerektirebilir.
 ## 8) File Notes
 
 - `config.json` -> general settings.
+- `config.json` icinde `Version` ve dil ayarlari bulunur.
 - `commands.json` -> editable aliases.
+- `commands.json` icinde `Version` bulunur.
+- `commands.json` icindeki `Ban` alias'i `sw_ban` (konsol) ve `!ban` (oyun ici) icin kullanilir, sadece SteamID ban atar.
+- `commands.json` icindeki `IpBan` alias'i `sw_ipban` (konsol) ve `!ipban` (oyun ici) icin kullanilir, sadece IP ban atar.
 - `permissions.json` -> permission mapping.
-- `resources/translations/tr.jsonc` and `en.jsonc` -> localization files.
+- `permissions.json` icinde `Version` bulunur.
+- `maps.json` icinde `Version` ile normal/workshop map listeleri bulunur.
+- `resources/translations/*.jsonc` -> dil dosyalari (`en`, `tr`, `de`, `fr`, `it`, `el`, `ru`, `bg`, `hu`).

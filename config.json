@@ -1,0 +1,87 @@
+{
+  "CS2Admin": {
+    "Version": 1,
+    "Language": "en",
+    "LanguageOptions": [
+      "en",
+      "tr",
+      "de",
+      "fr",
+      "it",
+      "el",
+      "ru",
+      "bg",
+      "hu"
+    ],
+    "Discord": {
+      "Webhook": "",
+      "CallAdminWebhook": "",
+      "ReportWebhook": "",
+      "AdminTimeWebhook": ""
+    },
+    "Messages": {
+      "EnableCenterHtmlMessages": true,
+      "CenterHtmlDurationMs": 5000
+    },
+    "Debug": {
+      "Enabled": false
+    },
+    "MultiServer": {
+      "Enabled": true,
+      "GlobalBansByDefault": true
+    },
+    "Tags": {
+      "Enabled": true,
+      "PlayerTag": "PLAYER"
+    },
+    "AdminPlaytime": {
+      "TrackIntervalMinutes": 1,
+      "MenuTopLimit": 20,
+      "DiscordTopLimit": 20
+    },
+    "WorkshopMaps": {
+      "Maps": {
+        "Inferno Online": 3549919360
+      }
+    },
+    "Sanctions": {
+      "Reasons": [
+        "Hacking",
+        "Obscene language",
+        "Insult players",
+        "Admin disrespect",
+        "Other"
+      ],
+      "Durations": [
+        {
+          "Name": "5 minutes",
+          "Minutes": 5
+        },
+        {
+          "Name": "30 minutes",
+          "Minutes": 30
+        },
+        {
+          "Name": "1 hour",
+          "Minutes": 60
+        },
+        {
+          "Name": "1 day",
+          "Minutes": 1440
+        },
+        {
+          "Name": "1 week",
+          "Minutes": 10080
+        },
+        {
+          "Name": "1 month",
+          "Minutes": 43200
+        },
+        {
+          "Name": "Permanent",
+          "Minutes": -1
+        }
+      ]
+    }
+  }
+}
