@@ -250,8 +250,8 @@
   "who_unknown": "Unknown",
   "who_none": "<none>",
   "who_usage": "Usage: !who <target>",
-  "join_summary": "{0} ({1}) joined | Bans:{2} Mutes:{3} Gags:{4} Warns:{5} | Active: {6}",
-  "join_active_none": "none",
+  "join_summary": "{0} ({1}) joined | Bans:{2} Mutes:{3} Gags:{4} Warns:{5} | Active Punishments: {6}",
+  "join_active_none": "None",
   "join_active_ban": "ban",
   "join_active_mute": "mute",
   "join_active_gag": "gag",
@@ -399,5 +399,6 @@
   "menu_select_item": "Select Item",
   "gagged_chat_admin_visible": "[GAG] {0}: {1}"
 }
+
 
 

@@ -243,19 +243,19 @@
   "who_active_warn_yes": "Aktif Uyarı: EVET (Sebep: {0}, Sona Erme Tarihi: {1})",
   "who_active_warn_no": "Aktif Uyarı: HAYIR",
   "who_total_bans": "- Toplam Yasaklamalar: {0}",
-  "who_total_mutes": "- Toplam Sessizler: {0}",
-  "who_total_gags": "- Toplam Şaka: {0}",
+  "who_total_mutes": "- Toplam Mute: {0}",
+  "who_total_gags": "- Toplam Gag: {0}",
   "who_total_warns": "Toplam Uyarılar: {0}",
   "who_console": "Oyuncu bilgileri konsolunuza yazdırıldı.",
   "who_unknown": "Bilinmiyor",
   "who_none": "<none>",
   "who_usage": "Kullanım: !who <target>",
-  "join_summary": "{0} ({1}) katıldı | Yasaklamalar:{2} Sessizler:{3} Şakalar:{4} Uyarılar:{5} | Aktif: {6}",
-  "join_active_none": "hiçbiri",
-  "join_active_ban": "yasak",
-  "join_active_mute": "sesini kapatmak",
-  "join_active_gag": "şaka",
-  "join_active_warn": "uyarmak",
+  "join_summary": "{0} ({1}) katıldı | Yasaklar:{2} Mutes:{3} Gags:{4} Uyarılar:{5} | Aktif Yasaklar: {6}",
+  "join_active_none": "Yok",
+  "join_active_ban": "ban",
+  "join_active_mute": "mute",
+  "join_active_gag": "gag",
+  "join_active_warn": "warn",
   "discord_ban_title": "Player Banned",
   "discord_unban_title": "Player Unbanned",
   "discord_mute_title": "Player Muted",
@@ -399,5 +399,6 @@
   "menu_select_item": "Item Seç",
   "gagged_chat_admin_visible": "[GAG] {0}: {1}"
 }
+
 
 

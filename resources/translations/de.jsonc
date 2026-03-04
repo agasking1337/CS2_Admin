@@ -250,12 +250,12 @@
   "who_unknown": "Unbekannt",
   "who_none": "<none>",
   "who_usage": "Verwendung: !who <target>",
-  "join_summary": "{0} ({1}) beigetreten | Verbote:{2} Stummschaltungen:{3} Gags:{4} Warnt:{5} | Aktiv: {6}",
-  "join_active_none": "keiner",
-  "join_active_ban": "Verbot",
-  "join_active_mute": "stumm",
-  "join_active_gag": "Gag",
-  "join_active_warn": "warnen",
+  "join_summary": "{0} ({1}) joined | Bans:{2} Mutes:{3} Gags:{4} Warns:{5} | Active Punishments: {6}",
+  "join_active_none": "None",
+  "join_active_ban": "ban",
+  "join_active_mute": "mute",
+  "join_active_gag": "gag",
+  "join_active_warn": "warn",
   "discord_ban_title": "Player Banned",
   "discord_unban_title": "Player Unbanned",
   "discord_mute_title": "Player Muted",
@@ -399,5 +399,6 @@
   "menu_select_item": "Select Item",
   "gagged_chat_admin_visible": "[GAG] {0}: {1}"
 }
+
 
 
