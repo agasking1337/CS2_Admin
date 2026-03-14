@@ -390,7 +390,7 @@ public partial class CS2_Admin : BasePlugin
             _config.Sanctions,
             _config.Commands.Warn,
             _config.Commands.Unwarn);
-        _playerCommands = new PlayerCommands(Core, _discord, _config.Permissions, _config.Commands, _config.Tags, _config.Messages, _banManager, _muteManager, _gagManager, _warnManager, _adminDbManager, _adminLogManager, _config.MultiServer);
+        _playerCommands = new PlayerCommands(Core, _discord, _config.Permissions, _config.Commands, _config.Tags, _config.Messages, _recentPlayersTracker, _banManager, _muteManager, _gagManager, _warnManager, _adminDbManager, _adminLogManager, _config.MultiServer);
         _serverCommands = new ServerCommands(Core, _adminLogManager, _config.Permissions, _config.GameMaps, _config.WorkshopMaps, _config.Commands);
         _adminCommands = new AdminCommands(Core, _adminDbManager, _groupDbManager, _adminLogManager, _config.Permissions, _config.Tags, _config.Commands, AdminMenuManager);
         _chatCommands = new ChatCommands(
@@ -906,10 +906,12 @@ public partial class CS2_Admin : BasePlugin
             RegisterCommand(cmd, _playerCommands.OnGiveCommand);
         foreach (var cmd in _config.Commands.Who)
             RegisterCommand(cmd, _playerCommands.OnWhoCommand);
+        foreach (var cmd in _config.Commands.Last)
+            RegisterCommand(cmd, _playerCommands.OnLastCommand);
 
         // Server commands
-        foreach (var cmd in _config.Commands.ChangeMap)
-            RegisterCommand(cmd, _serverCommands.OnMapCommand);
+        foreach (var cmd in _config.Commands.Vote)
+            RegisterCommand(cmd, _serverCommands.OnVoteCommand);
         foreach (var cmd in _config.Commands.ChangeWSMap)
             RegisterCommand(cmd, _serverCommands.OnWSMapCommand);
         foreach (var cmd in _config.Commands.RestartGame)
@@ -969,6 +971,24 @@ public partial class CS2_Admin : BasePlugin
                 // Keep unprefixed commands usable in chat/player context,
                 // but block direct server-console execution unless `sw_` is used.
                 return;
+            }
+
+            if (context.IsSentByPlayer && context.Sender != null && context.Sender.IsValid && !context.Sender.IsFakeClient)
+            {
+                var steamId = context.Sender.SteamID;
+                var isAdmin =
+                    Core.Permission.PlayerHasPermission(steamId, _config.Permissions.AdminRoot) ||
+                    (!string.IsNullOrWhiteSpace(_config.Permissions.AdminMenu) && Core.Permission.PlayerHasPermission(steamId, _config.Permissions.AdminMenu));
+
+                if (isAdmin && _discord.HasServerCommandLogsWebhookConfigured)
+                {
+                    var senderName = context.Sender.Controller.PlayerName ?? PluginLocalizer.Get(Core)["unknown"];
+                    var argsText = context.Args == null || context.Args.Length == 0
+                        ? string.Empty
+                        : string.Join(' ', context.Args);
+                    var serverName = ServerIdentity.GetName(Core);
+                    _ = Task.Run(async () => await _discord.SendServerCommandLogAsync(senderName, steamId, commandName, argsText, serverName));
+                }
             }
 
             handler(context);

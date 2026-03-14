@@ -253,6 +253,12 @@ public class ChatCommands
         var playerSteamId = context.Sender.SteamID;
         var serverId = ServerIdentity.GetServerId(_core);
 
+        if (!_discord.HasReportWebhookConfigured)
+        {
+            context.Reply($" \x02{PluginLocalizer.Get(_core)["prefix"]}\x01 Discord report webhook is not configured.");
+            return;
+        }
+
         _ = _discord.SendReportNotificationAsync(playerName, playerSteamId, messageText, serverId);
         _ = _adminLogManager.AddLogAsync("report", playerName, playerSteamId, null, context.Sender.IPAddress, $"message={messageText};server={serverId}");
 

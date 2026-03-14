@@ -208,10 +208,10 @@ public class FunCommandsMenuHandler : IAdminMenuHandler
         var builder = _core.MenusAPI.CreateBuilder();
         builder.Design.SetMenuTitle(T("menu_select_duration", "Select Duration"));
 
-        var damages = new[] { 0, 5, 10, 50, 90, 100 };
-        foreach (var damage in damages)
+        var strengths = new[] { 1, 5, 10, 50, 90, 100 };
+        foreach (var strength in strengths)
         {
-            var value = damage;
+            var value = strength;
             var option = new ButtonMenuOption(value.ToString()) { CloseAfterClick = true };
             option.Click += (_, args) =>
             {

@@ -208,6 +208,9 @@
     "ListPlayers": [],
     "Who": [
       "who"
+    ],
+    "Last": [
+      "last"
     ]
   }
 }

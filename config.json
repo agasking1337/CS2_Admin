@@ -17,7 +17,8 @@
       "Webhook": "",
       "CallAdminWebhook": "",
       "ReportWebhook": "",
-      "AdminTimeWebhook": ""
+      "AdminTimeWebhook": "",
+      "ServerCommandLogsWebhook": ""
     },
     "Messages": {
       "EnableCenterHtmlMessages": true,

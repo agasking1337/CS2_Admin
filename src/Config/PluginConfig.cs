@@ -28,8 +28,8 @@ public class PluginConfig
 
 public class TagsConfig
 {
-    public bool Enabled { get; set; } = true;
-    public string PlayerTag { get; set; } = "PLAYER";
+    public bool Enabled { get; set; } = false;
+    public string PlayerTag { get; set; } = "";
 }
 
 public class AdminPlaytimeConfig
@@ -62,6 +62,7 @@ public class DiscordConfig
     public string CallAdminWebhook { get; set; } = "";
     public string ReportWebhook { get; set; } = "";
     public string AdminTimeWebhook { get; set; } = "";
+    public string ServerCommandLogsWebhook { get; set; } = "";
 }
 
 public class CommandsConfig
@@ -186,6 +187,7 @@ public class CommandsConfig
     public List<string> Cvar { get; set; } = ["cvar"];
     public List<string> ListPlayers { get; set; } = [];
     public List<string> Who { get; set; } = ["who"];
+    public List<string> Last { get; set; } = ["last"];
 }
 
 public class PermissionsConfig
@@ -258,6 +260,7 @@ public class PermissionsConfig
     public string Cvar { get; set; } = "admin.cvar";
     public string ListPlayers { get; set; } = "admin.generic";
     public string Who { get; set; } = "admin.generic";
+    public string Last { get; set; } = "admin.generic";
     [JsonIgnore]
     public List<string> RootBypassPermissions { get; set; } = ["admin.*", "*"];
 }

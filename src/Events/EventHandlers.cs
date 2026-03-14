@@ -876,6 +876,36 @@ public class EventHandlers
         if (player == null || !player.IsValid)
             return HookResult.Continue;
 
+        var trimmed = string.IsNullOrWhiteSpace(text) ? string.Empty : text.Trim();
+        if (!string.IsNullOrWhiteSpace(trimmed)
+            && (trimmed.StartsWith("!@", StringComparison.Ordinal) || trimmed.StartsWith("/@", StringComparison.Ordinal)))
+        {
+            var messageText = trimmed.Length > 2 ? trimmed[2..].Trim() : string.Empty;
+            if (string.IsNullOrWhiteSpace(messageText))
+            {
+                player.SendChat($" \x02{PluginLocalizer.Get(_core)["prefix"]}\x01 {PluginLocalizer.Get(_core)["asay_usage"]}");
+                return HookResult.Stop;
+            }
+
+            var adminName = player.Controller.PlayerName ?? PluginLocalizer.Get(_core)["console_name"];
+            var prefix = PluginLocalizer.Get(_core)["asay_prefix"];
+            var msg = $" \x04{prefix}\x01 \x10{adminName}\x01: {messageText}";
+
+            foreach (var admin in _core.PlayerManager.GetAllPlayers().Where(p => p.IsValid && !p.IsFakeClient))
+            {
+                var canSee =
+                    _core.Permission.PlayerHasPermission(admin.SteamID, _permissions.AdminRoot) ||
+                    (!string.IsNullOrWhiteSpace(_permissions.Asay) && _core.Permission.PlayerHasPermission(admin.SteamID, _permissions.Asay));
+
+                if (canSee)
+                {
+                    admin.SendChat(msg);
+                }
+            }
+
+            return HookResult.Stop;
+        }
+
         // Gagged players can still execute commands; only normal chat is restricted.
         if (!string.IsNullOrWhiteSpace(text) && (text.StartsWith("!") || text.StartsWith("/")))
         {

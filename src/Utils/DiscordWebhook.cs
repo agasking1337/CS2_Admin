@@ -18,7 +18,12 @@ public class DiscordWebhook
     private readonly string _callAdminWebhookUrl;
     private readonly string _reportWebhookUrl;
     private readonly string _adminTimeWebhookUrl;
+    private readonly string _serverCommandLogsWebhookUrl;
     private readonly HttpClient _httpClient;
+
+    public bool HasReportWebhookConfigured => !string.IsNullOrWhiteSpace(_reportWebhookUrl) || !string.IsNullOrWhiteSpace(_defaultWebhookUrl);
+    public bool HasCallAdminWebhookConfigured => !string.IsNullOrWhiteSpace(_callAdminWebhookUrl) || !string.IsNullOrWhiteSpace(_defaultWebhookUrl);
+    public bool HasServerCommandLogsWebhookConfigured => !string.IsNullOrWhiteSpace(_serverCommandLogsWebhookUrl) || !string.IsNullOrWhiteSpace(_defaultWebhookUrl);
 
     public DiscordWebhook(ISwiftlyCore core, DiscordConfig config)
     {
@@ -27,6 +32,7 @@ public class DiscordWebhook
         _callAdminWebhookUrl = config.CallAdminWebhook ?? string.Empty;
         _reportWebhookUrl = config.ReportWebhook ?? string.Empty;
         _adminTimeWebhookUrl = config.AdminTimeWebhook ?? string.Empty;
+        _serverCommandLogsWebhookUrl = config.ServerCommandLogsWebhook ?? string.Empty;
         _httpClient = new HttpClient();
     }
 
@@ -329,6 +335,42 @@ public class DiscordWebhook
         }
     }
 
+    public async Task SendServerCommandLogAsync(string adminName, ulong adminSteamId, string commandName, string commandArgs, string serverName)
+    {
+        var webhookUrl = ResolveWebhookUrl(_serverCommandLogsWebhookUrl);
+        if (string.IsNullOrEmpty(webhookUrl))
+            return;
+
+        try
+        {
+            var safeName = string.IsNullOrWhiteSpace(adminName) ? "-" : adminName;
+            var safeCommand = string.IsNullOrWhiteSpace(commandName) ? "-" : commandName;
+            var safeArgs = string.IsNullOrWhiteSpace(commandArgs) ? string.Empty : commandArgs.Trim();
+            var safeServer = string.IsNullOrWhiteSpace(serverName) ? "-" : serverName;
+
+            var steamProfile = adminSteamId == 0 ? null : $"https://steamcommunity.com/profiles/{adminSteamId}";
+            var linkedName = string.IsNullOrWhiteSpace(steamProfile) ? safeName : $"[{safeName}]({steamProfile})";
+
+            var fullCommand = string.IsNullOrWhiteSpace(safeArgs)
+                ? safeCommand
+                : $"{safeCommand} {safeArgs}";
+
+            var embed = new
+            {
+                title = "Server Command Logs",
+                color = 3447003,
+                description = $"{linkedName} issued command `{fullCommand}` on server **{safeServer}**",
+                timestamp = DateTime.UtcNow.ToString("o")
+            };
+
+            await SendEmbedAsync(embed, webhookUrl);
+        }
+        catch (Exception ex)
+        {
+            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error sending server command log: {Message}", ex.Message);
+        }
+    }
+
     public async Task SendAdminActionNotificationAsync(string action, string adminName, ulong adminSteamId, ulong? targetSteamId, string? details, string serverId, string? targetName = null)
     {
         if (string.IsNullOrEmpty(_defaultWebhookUrl))
@@ -384,13 +426,38 @@ public class DiscordWebhook
 
     private async Task SendEmbedAsync(object embed, string webhookUrl, string? messageContent = null)
     {
-        var payload = new
+        try
         {
-            content = string.IsNullOrWhiteSpace(messageContent) ? null : messageContent,
-            embeds = new[] { embed }
-        };
-        var content = new StringContent(JsonSerializer.Serialize(payload), System.Text.Encoding.UTF8, "application/json");
-        await _httpClient.PostAsync(webhookUrl, content);
+            var payload = new
+            {
+                content = string.IsNullOrWhiteSpace(messageContent) ? null : messageContent,
+                embeds = new[] { embed }
+            };
+            var content = new StringContent(JsonSerializer.Serialize(payload), System.Text.Encoding.UTF8, "application/json");
+            using var response = await _httpClient.PostAsync(webhookUrl, content);
+            if (!response.IsSuccessStatusCode)
+            {
+                var body = string.Empty;
+                try
+                {
+                    body = await response.Content.ReadAsStringAsync();
+                }
+                catch
+                {
+                    body = string.Empty;
+                }
+
+                _core.Logger.LogWarningIfEnabled(
+                    "[CS2_Admin] Discord webhook returned {StatusCode} for {Url}. Response: {Body}",
+                    (int)response.StatusCode,
+                    webhookUrl,
+                    string.IsNullOrWhiteSpace(body) ? "-" : body);
+            }
+        }
+        catch (Exception ex)
+        {
+            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error while posting Discord webhook: {Message}", ex.Message);
+        }
     }
 
     private object BuildStandardAdminActionEmbed(

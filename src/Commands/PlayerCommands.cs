@@ -23,6 +23,7 @@ public class PlayerCommands
     private readonly CommandsConfig _commands;
     private readonly TagsConfig _tags;
     private readonly MessagesConfig _messagesConfig;
+    private readonly RecentPlayersTracker _recentPlayersTracker;
     private readonly BanManager _banManager;
     private readonly MuteManager _muteManager;
     private readonly GagManager _gagManager;
@@ -57,6 +58,7 @@ public class PlayerCommands
         CommandsConfig commands,
         TagsConfig tags,
         MessagesConfig messagesConfig,
+        RecentPlayersTracker recentPlayersTracker,
         BanManager banManager,
         MuteManager muteManager,
         GagManager gagManager,
@@ -71,6 +73,7 @@ public class PlayerCommands
         _commands = commands;
         _tags = tags;
         _messagesConfig = messagesConfig;
+        _recentPlayersTracker = recentPlayersTracker;
         _banManager = banManager;
         _muteManager = muteManager;
         _gagManager = gagManager;
@@ -173,11 +176,13 @@ public class PlayerCommands
             return;
         }
 
-        var damage = 5;
-        if (args.Length > 1 && int.TryParse(args[1], out var parsedDamage))
+        var knockbackStrength = 5;
+        if (args.Length > 1 && int.TryParse(args[1], out var parsedStrength))
         {
-            damage = Math.Clamp(parsedDamage, 1, 100);
+            knockbackStrength = Math.Clamp(parsedStrength, 1, 100);
         }
+
+        var damage = 0;
 
         var adminName = context.Sender?.Controller.PlayerName ?? PluginLocalizer.Get(_core)["console_name"];
         foreach (var target in targets)
@@ -217,8 +222,8 @@ public class PlayerCommands
 
                 // Slap feedback: immediate knockback scales with damage.
                 var currentVelocity = livePawn.AbsVelocity;
-                var verticalBoost = Math.Clamp(140f + (damage * 4f), 180f, 720f);
-                var horizontalBoost = Math.Clamp(20f + (damage * 1.8f), 30f, 240f);
+                var verticalBoost = Math.Clamp(140f + (knockbackStrength * 4f), 180f, 720f);
+                var horizontalBoost = Math.Clamp(20f + (knockbackStrength * 1.8f), 30f, 240f);
                 var randomX = (float)(Random.Shared.NextDouble() * 2.0 - 1.0) * horizontalBoost;
                 var randomY = (float)(Random.Shared.NextDouble() * 2.0 - 1.0) * horizontalBoost;
                 livePawn.AbsVelocity = new Vector(
@@ -238,8 +243,8 @@ public class PlayerCommands
                     player.SendChat($" \x02{PluginLocalizer.Get(_core)["prefix"]}\x01 {PluginLocalizer.Get(_core)["slapped_notification", adminName, targetName, damage]}");
                 }
 
-                _ = _adminLogManager.AddLogAsync("slap", adminName, context.Sender?.SteamID ?? 0, liveTarget.SteamID, liveTarget.IPAddress, $"damage={damage}", liveTarget.Controller.PlayerName);
-                _core.Logger.LogInformationIfEnabled("[CS2_Admin] {Admin} slapped {Target} for {Damage} damage", adminName, targetName, damage);
+                _ = _adminLogManager.AddLogAsync("slap", adminName, context.Sender?.SteamID ?? 0, liveTarget.SteamID, liveTarget.IPAddress, $"damage={damage};knockback={knockbackStrength}", liveTarget.Controller.PlayerName);
+                _core.Logger.LogInformationIfEnabled("[CS2_Admin] {Admin} slapped {Target} for {Damage} damage (knockback={Knockback})", adminName, targetName, damage, knockbackStrength);
             });
         }
     }
@@ -1777,6 +1782,77 @@ public class PlayerCommands
                 }
             });
         });
+    }
+
+    public void OnLastCommand(ICommandContext context)
+    {
+        var args = CommandAliasUtils.NormalizeCommandArgs(context.Args, _commands.Last);
+
+        if (!HasPermission(context, _permissions.Last))
+        {
+            context.Reply($" \x02{PluginLocalizer.Get(_core)["prefix"]}\x01 {PluginLocalizer.Get(_core)["no_permission"]}");
+            return;
+        }
+
+        var maxCount = 10;
+        if (args.Length >= 1 && int.TryParse(args[0], out var parsedCount))
+        {
+            maxCount = Math.Clamp(parsedCount, 1, 30);
+        }
+
+        var recent = _recentPlayersTracker.GetRecent();
+        var lines = new List<string>
+        {
+            "--- Last disconnected players ---"
+        };
+
+        var shown = 0;
+        foreach (var entry in recent)
+        {
+            if (shown >= maxCount)
+            {
+                break;
+            }
+
+            if (entry.SteamId == 0)
+            {
+                continue;
+            }
+
+            var age = DateTime.UtcNow - entry.LastSeenAt;
+            var ageText = age.TotalSeconds < 0
+                ? "0s"
+                : age.TotalHours >= 1
+                    ? $"{(int)age.TotalHours}h {age.Minutes}m"
+                    : age.TotalMinutes >= 1
+                        ? $"{(int)age.TotalMinutes}m {age.Seconds}s"
+                        : $"{age.Seconds}s";
+
+            lines.Add($"#{shown + 1}: {entry.Name} | {entry.SteamId} | last seen {ageText} ago");
+            shown++;
+        }
+
+        if (shown == 0)
+        {
+            lines.Add("No recent disconnected players tracked yet.");
+        }
+
+        lines.Add("---------------------------------");
+
+        var output = string.Join('\n', lines);
+        if (context.IsSentByPlayer && context.Sender != null)
+        {
+            context.Sender.SendConsole(output);
+
+            if (context.Sender.IsValid && !context.Sender.IsFakeClient)
+            {
+                context.Sender.SendChat($" \x02{PluginLocalizer.Get(_core)["prefix"]}\x01 Printed last disconnected players to your console.");
+            }
+        }
+        else
+        {
+            _core.Logger.LogInformationIfEnabled("{LastPlayers}", output);
+        }
     }
 
     public void OnPlayerDisconnect(int playerId)
