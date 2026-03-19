@@ -62,6 +62,9 @@ public partial class CS2_Admin : BasePlugin
     private RecentPlayersTracker _recentPlayersTracker = null!;
     private Timer? _adminPlaytimeTimer;
     private int _isTrackingAdminPlaytime;
+    private int _dbInitRunning;
+    private int _dbInitRetryScheduled;
+    private bool _commandsRegistered;
     private string? _resolvedTranslationDirectory;
     private static readonly HashSet<string> BlockedCommandAliases = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -106,6 +109,7 @@ public partial class CS2_Admin : BasePlugin
 
         // Register commands
         RegisterCommands();
+        _commandsRegistered = true;
 
         // Register events
         RegisterEvents();
@@ -390,7 +394,7 @@ public partial class CS2_Admin : BasePlugin
             _config.Sanctions,
             _config.Commands.Warn,
             _config.Commands.Unwarn);
-        _playerCommands = new PlayerCommands(Core, _discord, _config.Permissions, _config.Commands, _config.Tags, _config.Messages, _recentPlayersTracker, _banManager, _muteManager, _gagManager, _warnManager, _adminDbManager, _adminLogManager, _config.MultiServer);
+        _playerCommands = new PlayerCommands(Core, _discord, _config.Permissions, _config.Commands, _config.Tags, _config.Messages, _recentPlayersTracker, _banManager, _muteManager, _gagManager, _warnManager, _adminDbManager, _adminLogManager, _playerIpDbManager, _config.MultiServer);
         _serverCommands = new ServerCommands(Core, _adminLogManager, _config.Permissions, _config.GameMaps, _config.WorkshopMaps, _config.Commands);
         _adminCommands = new AdminCommands(Core, _adminDbManager, _groupDbManager, _adminLogManager, _config.Permissions, _config.Tags, _config.Commands, AdminMenuManager);
         _chatCommands = new ChatCommands(
@@ -414,9 +418,16 @@ public partial class CS2_Admin : BasePlugin
 
     private async Task InitializeDatabasesAsync()
     {
+        if (Interlocked.Exchange(ref _dbInitRunning, 1) == 1)
+        {
+            return;
+        }
+
         if (!CanConnectToDatabase())
         {
             _eventHandlers.SetDatabaseReady(false);
+            ScheduleDatabaseInitRetry();
+            Interlocked.Exchange(ref _dbInitRunning, 0);
             return;
         }
 
@@ -436,6 +447,8 @@ public partial class CS2_Admin : BasePlugin
             _eventHandlers.SetDatabaseReady(false);
             Core.Logger.LogWarningIfEnabled(
                 "[CS2Admin] Required DB tables are missing. Database-backed features will stay disabled until migrations are fixed.");
+            ScheduleDatabaseInitRetry();
+            Interlocked.Exchange(ref _dbInitRunning, 0);
             return;
         }
 
@@ -443,10 +456,27 @@ public partial class CS2_Admin : BasePlugin
         StartAdminPlaytimeTracking();
         await _eventHandlers.RefreshAdminStateForAllOnlinePlayersAsync();
 
+        Interlocked.Exchange(ref _dbInitRetryScheduled, 0);
+        Interlocked.Exchange(ref _dbInitRunning, 0);
+
         Core.Logger.LogInformationIfEnabled(
             "[CS2Admin] Server IP: {Ip} Port: {Port}",
             ServerIdentity.GetIp(Core),
             ServerIdentity.GetPort(Core));
+    }
+
+    private void ScheduleDatabaseInitRetry()
+    {
+        if (Interlocked.Exchange(ref _dbInitRetryScheduled, 1) == 1)
+        {
+            return;
+        }
+
+        Core.Scheduler.DelayBySeconds(10f, () =>
+        {
+            Interlocked.Exchange(ref _dbInitRetryScheduled, 0);
+            _ = InitializeDatabasesAsync();
+        });
     }
 
     private bool CanConnectToDatabase()
@@ -483,7 +513,8 @@ public partial class CS2_Admin : BasePlugin
             "admin_log",
             "admin_playtime",
             "admin_player_ips",
-            "admin_player_ip_history"
+            "admin_player_ip_history",
+            "admin_player_sessions"
         };
 
         try
@@ -908,10 +939,14 @@ public partial class CS2_Admin : BasePlugin
             RegisterCommand(cmd, _playerCommands.OnWhoCommand);
         foreach (var cmd in _config.Commands.Last)
             RegisterCommand(cmd, _playerCommands.OnLastCommand);
+        foreach (var cmd in _config.Commands.Hide)
+            RegisterCommand(cmd, _playerCommands.OnHideCommand);
 
         // Server commands
         foreach (var cmd in _config.Commands.Vote)
             RegisterCommand(cmd, _serverCommands.OnVoteCommand);
+        foreach (var cmd in _config.Commands.ChangeMap)
+            RegisterCommand(cmd, _serverCommands.OnMapCommand);
         foreach (var cmd in _config.Commands.ChangeWSMap)
             RegisterCommand(cmd, _serverCommands.OnWSMapCommand);
         foreach (var cmd in _config.Commands.RestartGame)
@@ -932,8 +967,6 @@ public partial class CS2_Admin : BasePlugin
             RegisterCommand(cmd, _serverCommands.OnRconCommand);
         foreach (var cmd in _config.Commands.Cvar)
             RegisterCommand(cmd, _serverCommands.OnCvarCommand);
-        foreach (var cmd in _config.Commands.Vote)
-            RegisterCommand(cmd, _serverCommands.OnVoteCommand);
 
         // Admin commands
         foreach (var cmd in _config.Commands.AddAdmin)
@@ -1003,11 +1036,6 @@ public partial class CS2_Admin : BasePlugin
 
     private void TryRegisterCommand(string name, ICommandService.CommandListener handler)
     {
-        if (Core.Command.IsCommandRegistered(name))
-        {
-            return;
-        }
-
         Core.Command.RegisterCommand(name, handler, registerRaw: true);
     }
 
@@ -1082,6 +1110,7 @@ public partial class CS2_Admin : BasePlugin
     private void RegisterEvents()
     {
         Core.Event.OnClientSteamAuthorize += _eventHandlers.OnClientSteamAuthorize;
+        Core.Event.OnClientPutInServer += _eventHandlers.OnClientPutInServer;
         Core.Event.OnClientDisconnected += _eventHandlers.OnClientDisconnected;
 
         Core.GameEvent.HookPost<EventRoundStart>(_eventHandlers.OnRoundStart);
@@ -1099,11 +1128,11 @@ public partial class CS2_Admin : BasePlugin
     {
         try
         {
-            var probe = _config?.Commands?.AdminMenu?.FirstOrDefault();
-            if (!string.IsNullOrWhiteSpace(probe) && Core.Command.IsCommandRegistered(probe))
+            if (_commandsRegistered)
                 return;
 
             RegisterCommands();
+            _commandsRegistered = true;
         }
         catch (Exception ex)
         {
@@ -1115,6 +1144,7 @@ public partial class CS2_Admin : BasePlugin
     {
         var intervalMinutes = Math.Max(1, _config.AdminPlaytime.TrackIntervalMinutes);
         _adminPlaytimeTimer?.Dispose();
+        Interlocked.Exchange(ref _isTrackingAdminPlaytime, 0);
 
         _adminPlaytimeTimer = new Timer(
             _ =>
@@ -1128,9 +1158,10 @@ public partial class CS2_Admin : BasePlugin
                 {
                     var snapshots = Core.PlayerManager.GetAllPlayers()
                         .Where(p => p.IsValid && !p.IsFakeClient)
-                        .Select(p => new AdminPlaytimeSnapshot(
-                            p.SteamID,
-                            p.Controller.PlayerName ?? PluginLocalizer.Get(Core)["player_fallback_name", p.PlayerID]))
+                        .GroupBy(p => p.SteamID)
+                        .Select(g => new AdminPlaytimeSnapshot(
+                            g.Key,
+                            g.First().Controller.PlayerName ?? PluginLocalizer.Get(Core)["player_fallback_name", g.First().PlayerID]))
                         .ToList();
 
                     _ = Task.Run(async () =>

@@ -67,6 +67,7 @@
     "Cvar": "admin.cvar",
     "ListPlayers": "admin.generic",
     "Who": "admin.generic",
-    "Last": "admin.generic"
+    "Last": "admin.generic",
+    "Hide": "admin.generic"
   }
 }

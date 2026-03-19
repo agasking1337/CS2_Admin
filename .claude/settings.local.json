@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__swiftlys2-docs__search_docs",
+      "mcp__swiftlys2-docs__get_doc_chunk",
+      "mcp__swiftlys2__search_in_plugins",
+      "mcp__swiftlys2__get_plugin_file_content",
+      "Bash(dotnet build --no-restore)",
+      "Bash(dotnet build)"
+    ]
+  }
+}

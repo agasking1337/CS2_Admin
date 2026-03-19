@@ -10,6 +10,7 @@ namespace CS2_Admin.Database;
 public class PlayerIpDbManager
 {
     private readonly ISwiftlyCore _core;
+    private const int MaxPlayerNameLength = 64;
 
     public PlayerIpDbManager(ISwiftlyCore core)
     {
@@ -22,6 +23,16 @@ public class PlayerIpDbManager
         {
             using var connection = _core.Database.GetConnection("admins");
             MigrationRunner.RunMigrations(connection);
+
+            var cutoff = DateTime.UtcNow.AddHours(-12);
+            await connection.ExecuteAsync(
+                """
+                UPDATE `admin_player_sessions`
+                SET `disconnected_at` = @Now
+                WHERE `disconnected_at` IS NULL
+                  AND `connected_at` < @Cutoff
+                """,
+                new { Now = DateTime.UtcNow, Cutoff = cutoff });
             _core.Logger.LogInformationIfEnabled("[CS2_Admin] Player IP database initialized successfully");
         }
         catch (Exception ex)
@@ -35,6 +46,7 @@ public class PlayerIpDbManager
         var normalizedIp = NormalizeIpAddress(ipAddress);
         if (steamId == 0 || string.IsNullOrWhiteSpace(normalizedIp))
         {
+            _core.Logger.LogWarningIfEnabled("[CS2_Admin] UpsertPlayerIp skipped: steamId={SteamId} rawIp={RawIp} normalizedIp={NormalizedIp}", steamId, ipAddress ?? "null", normalizedIp ?? "null");
             return;
         }
 
@@ -42,7 +54,7 @@ public class PlayerIpDbManager
         {
             using var connection = _core.Database.GetConnection("admins");
             var now = DateTime.UtcNow;
-            var safeName = string.IsNullOrWhiteSpace(playerName) ? steamId.ToString() : playerName.Trim();
+            var safeName = ClampPlayerName(string.IsNullOrWhiteSpace(playerName) ? steamId.ToString() : playerName.Trim());
 
             var existing = connection.FirstOrDefault<PlayerIpRecord>(x => x.SteamId == steamId);
             if (existing == null)
@@ -86,6 +98,148 @@ public class PlayerIpDbManager
         catch (Exception ex)
         {
             _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error upserting player ip: {Message}", ex.Message);
+        }
+    }
+
+    public async Task<long> InsertPlayerSessionAsync(ulong steamId, string? playerName, string? ipAddress, DateTime connectedAt)
+    {
+        if (steamId == 0)
+        {
+            _core.Logger.LogWarningIfEnabled("[CS2_Admin] InsertPlayerSession skipped: steamId is 0");
+            return 0;
+        }
+
+        try
+        {
+            _core.Logger.LogInformationIfEnabled("[CS2_Admin] InsertPlayerSession attempting: steamId={SteamId} name={Name} ip={Ip}", steamId, playerName, ipAddress);
+            using var connection = _core.Database.GetConnection("admins");
+            var safeName = ClampPlayerName(string.IsNullOrWhiteSpace(playerName) ? steamId.ToString() : playerName.Trim());
+            var safeIp = NormalizeIpAddress(ipAddress) ?? string.Empty;
+            var record = new PlayerSessionRecord
+            {
+                SteamId = steamId,
+                PlayerName = safeName,
+                IpAddress = safeIp,
+                ConnectedAt = connectedAt,
+                DisconnectedAt = null
+            };
+            var id = Convert.ToInt64(connection.Insert(record));
+            _core.Logger.LogInformationIfEnabled("[CS2_Admin] InsertPlayerSession succeeded: steamId={SteamId} sessionId={SessionId}", steamId, id);
+            return id;
+        }
+        catch (Exception ex)
+        {
+            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error inserting player session: {Message} | StackTrace: {Stack}", ex.Message, ex.StackTrace);
+            return 0;
+        }
+    }
+
+    public async Task ClosePlayerSessionAsync(long sessionId, string? playerName, DateTime disconnectedAt, ulong steamId = 0)
+    {
+        try
+        {
+            using var connection = _core.Database.GetConnection("admins");
+            var safeName = !string.IsNullOrWhiteSpace(playerName) ? ClampPlayerName(playerName.Trim()) : null;
+
+            int affected = 0;
+
+            if (sessionId > 0)
+            {
+                affected = await connection.ExecuteAsync(
+                    safeName != null
+                        ? """
+                          UPDATE `admin_player_sessions`
+                          SET `disconnected_at` = @DisconnectedAt, `player_name` = @PlayerName
+                          WHERE `id` = @Id AND `disconnected_at` IS NULL
+                          """
+                        : """
+                          UPDATE `admin_player_sessions`
+                          SET `disconnected_at` = @DisconnectedAt
+                          WHERE `id` = @Id AND `disconnected_at` IS NULL
+                          """,
+                    new { Id = sessionId, DisconnectedAt = disconnectedAt, PlayerName = safeName });
+            }
+
+            if (affected == 0 && steamId != 0)
+            {
+                affected = await connection.ExecuteAsync(
+                    safeName != null
+                        ? """
+                          UPDATE `admin_player_sessions`
+                          SET `disconnected_at` = @DisconnectedAt, `player_name` = @PlayerName
+                          WHERE `steamid` = @SteamId AND `disconnected_at` IS NULL
+                          ORDER BY `connected_at` DESC
+                          LIMIT 1
+                          """
+                        : """
+                          UPDATE `admin_player_sessions`
+                          SET `disconnected_at` = @DisconnectedAt
+                          WHERE `steamid` = @SteamId AND `disconnected_at` IS NULL
+                          ORDER BY `connected_at` DESC
+                          LIMIT 1
+                          """,
+                    new { SteamId = (long)steamId, DisconnectedAt = disconnectedAt, PlayerName = safeName });
+            }
+
+            _core.Logger.LogInformationIfEnabled(
+                "[CS2_Admin] ClosePlayerSession: sessionId={SessionId} steamId={SteamId} affected={Affected}",
+                sessionId, steamId, affected);
+        }
+        catch (Exception ex)
+        {
+            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error closing player session: {Message}", ex.Message);
+        }
+    }
+
+    private static string ClampPlayerName(string name)
+    {
+        if (string.IsNullOrEmpty(name))
+        {
+            return string.Empty;
+        }
+
+        return name.Length <= MaxPlayerNameLength
+            ? name
+            : name[..MaxPlayerNameLength];
+    }
+
+    public async Task<IReadOnlyList<PlayerSessionRecord>> GetRecentDisconnectedAsync(int limit)
+    {
+        try
+        {
+            using var connection = _core.Database.GetConnection("admins");
+            var rows = await connection.QueryAsync<PlayerSessionRecord>(
+                """
+                SELECT id, steamid, player_name, ip_address, connected_at, disconnected_at
+                FROM `admin_player_sessions`
+                WHERE steamid != 0
+                  AND disconnected_at IS NOT NULL
+                ORDER BY disconnected_at DESC
+                LIMIT @Limit
+                """,
+                new { Limit = limit * 3 });
+
+            var seen = new HashSet<ulong>();
+            var result = new List<PlayerSessionRecord>();
+            foreach (var row in rows)
+            {
+                if (seen.Add(row.SteamId))
+                {
+                    result.Add(row);
+                    if (result.Count >= limit)
+                    {
+                        break;
+                    }
+                }
+            }
+
+            _core.Logger.LogInformationIfEnabled("[CS2_Admin] GetRecentDisconnected: returning={Returning}", result.Count);
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error querying recent disconnected players: {Message}", ex.Message);
+            return [];
         }
     }
 

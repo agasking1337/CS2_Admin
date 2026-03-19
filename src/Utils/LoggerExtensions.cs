@@ -23,17 +23,11 @@ public static class LoggerExtensions
 
     public static void LogErrorIfEnabled(this ILogger logger, string message, params object?[] args)
     {
-        if (!DebugSettings.LoggingEnabled)
-            return;
-
         logger.LogError(message, args);
     }
 
     public static void LogErrorIfEnabled(this ILogger logger, Exception exception, string message, params object?[] args)
     {
-        if (!DebugSettings.LoggingEnabled)
-            return;
-
         logger.LogError(exception, message, args);
     }
 }

@@ -9,7 +9,7 @@ namespace CS2_Admin.Database;
 public class WarnManager
 {
     private readonly ISwiftlyCore _core;
-    private readonly Dictionary<ulong, Warn> _warnCache = new();
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<ulong, Warn> _warnCache = new();
     private DateTime _lastCacheUpdate = DateTime.MinValue;
     private readonly TimeSpan _cacheLifetime = TimeSpan.FromMinutes(5);
     private readonly AsyncLocal<AdminContext> _currentAdmin = new();
@@ -106,7 +106,7 @@ public class WarnManager
                 warn.UnwarnDate = DateTime.UtcNow;
 
                 connection.Update(warn);
-                _warnCache.Remove(steamId);
+                _warnCache.TryRemove(steamId, out _);
                 return true;
             }
             catch (Exception ex)
@@ -126,7 +126,7 @@ public class WarnManager
             {
                 if (cachedWarn.IsExpired || cachedWarn.Status != WarnStatus.Active)
                 {
-                    _warnCache.Remove(steamId);
+                    _warnCache.TryRemove(steamId, out _);
                     return null;
                 }
 
@@ -149,7 +149,7 @@ public class WarnManager
             }
             else
             {
-                _warnCache.Remove(steamId);
+                _warnCache.TryRemove(steamId, out _);
             }
 
             return warn;
@@ -168,7 +168,7 @@ public class WarnManager
             try
             {
                 using var connection = _core.Database.GetConnection("admins");
-                var warns = connection.Select<Warn>(w => w.SteamId == steamId);
+                var warns = connection.GetAll<Warn>().Where(w => w.SteamId == steamId);
                 return warns.Count();
             }
             catch (Exception ex)
@@ -186,10 +186,11 @@ public class WarnManager
             try
             {
                 using var connection = _core.Database.GetConnection("admins");
-                var warns = connection.Select<Warn>(w =>
+                var now = DateTime.UtcNow;
+                var warns = connection.GetAll<Warn>().Where(w =>
                     w.SteamId == steamId &&
                     w.Status == WarnStatus.Active &&
-                    (w.ExpiresAt == null || w.ExpiresAt > DateTime.UtcNow));
+                    (w.ExpiresAt == null || w.ExpiresAt > now));
                 return warns.Count();
             }
             catch (Exception ex)
@@ -208,7 +209,7 @@ public class WarnManager
             {
                 using var connection = _core.Database.GetConnection("admins");
                 var now = DateTime.UtcNow;
-                var warns = connection.Select<Warn>(w => w.SteamId == steamId).ToList();
+                var warns = connection.GetAll<Warn>().Where(w => w.SteamId == steamId).ToList();
 
                 var filtered = filter switch
                 {
@@ -238,10 +239,13 @@ public class WarnManager
             try
             {
                 using var connection = _core.Database.GetConnection("admins");
-                var expiredWarns = connection.Select<Warn>(w =>
-                    w.Status == WarnStatus.Active &&
-                    w.ExpiresAt != null &&
-                    w.ExpiresAt <= DateTime.UtcNow);
+                var now = DateTime.UtcNow;
+                var expiredWarns = connection.GetAll<Warn>()
+                    .Where(w =>
+                        w.Status == WarnStatus.Active &&
+                        w.ExpiresAt != null &&
+                        w.ExpiresAt <= now)
+                    .ToList();
 
                 int cleaned = 0;
                 foreach (var warn in expiredWarns)

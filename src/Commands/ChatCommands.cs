@@ -2,6 +2,7 @@ using CS2_Admin.Config;
 using CS2_Admin.Database;
 using CS2_Admin.Utils;
 using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using SwiftlyS2.Shared;
@@ -20,6 +21,12 @@ public class ChatCommands
     private readonly MessagesConfig _messages;
     private readonly CommandsConfig _commands;
     private readonly SanctionMenuConfig _sanctions;
+
+    private static readonly TimeSpan ReportSameTargetCooldown = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan ReportDifferentTargetCooldown = TimeSpan.FromMinutes(2);
+    private readonly object _reportCooldownLock = new();
+    private readonly Dictionary<ulong, ReporterLastReport> _reporterLastReports = new();
+    private readonly Dictionary<ReportPairKey, DateTime> _reporterTargetLastReports = new();
 
     public ChatCommands(
         ISwiftlyCore core,
@@ -253,6 +260,30 @@ public class ChatCommands
         var playerSteamId = context.Sender.SteamID;
         var serverId = ServerIdentity.GetServerId(_core);
 
+        ulong targetSteamId = 0;
+        if (args.Length >= 1)
+        {
+            var target = PlayerUtils.FindPlayerByTarget(_core, args[0]);
+            if (target != null && target.IsValid && !target.IsFakeClient)
+            {
+                targetSteamId = target.SteamID;
+            }
+        }
+
+        if (targetSteamId != 0)
+        {
+            if (!TryConsumeReportCooldown(playerSteamId, targetSteamId, out var remaining, out var sameTarget))
+            {
+                var seconds = (int)Math.Ceiling(remaining.TotalSeconds);
+                var waitText = seconds <= 0 ? "a moment" : $"{seconds}s";
+                var reasonText = sameTarget
+                    ? $"You must wait {waitText} before reporting this player again."
+                    : $"You must wait {waitText} before reporting another player.";
+                context.Reply($" \x02{PluginLocalizer.Get(_core)["prefix"]}\x01 {reasonText}");
+                return;
+            }
+        }
+
         if (!_discord.HasReportWebhookConfigured)
         {
             context.Reply($" \x02{PluginLocalizer.Get(_core)["prefix"]}\x01 Discord report webhook is not configured.");
@@ -369,6 +400,23 @@ public class ChatCommands
         var serverId = ServerIdentity.GetServerId(_core);
         var messageText = $"Target: {target.Name} ({target.SteamId}) | Reason: {reason}";
 
+        if (target.SteamId != 0)
+        {
+            if (!TryConsumeReportCooldown(playerSteamId, target.SteamId, out var remaining, out var sameTarget))
+            {
+                var seconds = (int)Math.Ceiling(remaining.TotalSeconds);
+                var waitText = seconds <= 0 ? "a moment" : $"{seconds}s";
+                var reasonText = sameTarget
+                    ? $"You must wait {waitText} before reporting this player again."
+                    : $"You must wait {waitText} before reporting another player.";
+                _core.Scheduler.NextTick(() =>
+                {
+                    reporter.SendChat($" \x02{PluginLocalizer.Get(_core)["prefix"]}\x01 {reasonText}");
+                });
+                return;
+            }
+        }
+
         await _discord.SendReportNotificationAsync(playerName, playerSteamId, messageText, serverId);
         await _adminLogManager.AddLogAsync(
             "report",
@@ -397,7 +445,49 @@ public class ChatCommands
         }
     }
 
+    private bool TryConsumeReportCooldown(ulong reporterSteamId, ulong targetSteamId, out TimeSpan remaining, out bool sameTarget)
+    {
+        remaining = TimeSpan.Zero;
+        sameTarget = false;
+
+        var now = DateTime.UtcNow;
+        lock (_reportCooldownLock)
+        {
+            var pairKey = new ReportPairKey(reporterSteamId, targetSteamId);
+            if (_reporterTargetLastReports.TryGetValue(pairKey, out var lastSameTargetAt))
+            {
+                var elapsed = now - lastSameTargetAt;
+                if (elapsed < ReportSameTargetCooldown)
+                {
+                    sameTarget = true;
+                    remaining = ReportSameTargetCooldown - elapsed;
+                    return false;
+                }
+            }
+
+            if (_reporterLastReports.TryGetValue(reporterSteamId, out var lastReport))
+            {
+                if (lastReport.TargetSteamId != 0 && lastReport.TargetSteamId != targetSteamId)
+                {
+                    var elapsed = now - lastReport.ReportedAtUtc;
+                    if (elapsed < ReportDifferentTargetCooldown)
+                    {
+                        sameTarget = false;
+                        remaining = ReportDifferentTargetCooldown - elapsed;
+                        return false;
+                    }
+                }
+            }
+
+            _reporterLastReports[reporterSteamId] = new ReporterLastReport(now, targetSteamId);
+            _reporterTargetLastReports[pairKey] = now;
+            return true;
+        }
+    }
+
     private readonly record struct ReportTarget(ulong SteamId, string Name);
+    private readonly record struct ReportPairKey(ulong ReporterSteamId, ulong TargetSteamId);
+    private readonly record struct ReporterLastReport(DateTime ReportedAtUtc, ulong TargetSteamId);
 }
 
 

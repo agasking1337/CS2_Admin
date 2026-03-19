@@ -11,8 +11,8 @@ public class AdminDbManager
 {
     private readonly ISwiftlyCore _core;
     private readonly GroupDbManager _groupManager;
-    private readonly Dictionary<ulong, Admin> _adminCache = new();
-    private DateTime _lastCacheUpdate = DateTime.MinValue;
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<ulong, Admin> _adminCache = new();
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<ulong, DateTime> _adminCacheTimestamps = new();
     private readonly TimeSpan _cacheLifetime = TimeSpan.FromMinutes(5);
 
     public AdminDbManager(ISwiftlyCore core, GroupDbManager groupManager)
@@ -54,6 +54,9 @@ public class AdminDbManager
                 return false;
             }
 
+            var normalizedName = NormalizeDbString(name, 64);
+            var normalizedAddedBy = NormalizeDbString(addedBy, 64);
+
             DateTime? expiresAt = durationDays.HasValue && durationDays.Value > 0
                 ? DateTime.UtcNow.AddDays(durationDays.Value)
                 : null;
@@ -66,12 +69,12 @@ public class AdminDbManager
 
             if (existingAdmin != null)
             {
-                existingAdmin.Name = name;
+                existingAdmin.Name = normalizedName;
                 existingAdmin.Flags = string.Empty;
                 existingAdmin.Groups = normalizedGroups;
                 existingAdmin.Immunity = resolvedImmunity;
                 existingAdmin.ExpiresAt = expiresAt;
-                existingAdmin.AddedBy = addedBy;
+                existingAdmin.AddedBy = normalizedAddedBy;
                 existingAdmin.AddedBySteamId = addedBySteamId;
                 connection.Update(existingAdmin);
                 _adminCache[steamId] = existingAdmin;
@@ -81,13 +84,13 @@ public class AdminDbManager
                 var admin = new Admin
                 {
                     SteamId = steamId,
-                    Name = name,
+                    Name = normalizedName,
                     Flags = string.Empty,
                     Groups = normalizedGroups,
                     Immunity = resolvedImmunity,
                     CreatedAt = DateTime.UtcNow,
                     ExpiresAt = expiresAt,
-                    AddedBy = addedBy,
+                    AddedBy = normalizedAddedBy,
                     AddedBySteamId = addedBySteamId
                 };
                 var id = connection.Insert(admin);
@@ -95,7 +98,7 @@ public class AdminDbManager
                 _adminCache[steamId] = admin;
             }
 
-            _lastCacheUpdate = DateTime.UtcNow;
+            _adminCacheTimestamps[steamId] = DateTime.UtcNow;
             return true;
         }
         catch (Exception ex)
@@ -159,6 +162,7 @@ public class AdminDbManager
             using var connection = _core.Database.GetConnection("admins");
             connection.Update(existingAdmin);
             _adminCache[steamId] = existingAdmin;
+            _adminCacheTimestamps[steamId] = DateTime.UtcNow;
             return true;
         }
         catch (Exception ex)
@@ -180,7 +184,8 @@ public class AdminDbManager
             }
 
             connection.Delete(admin);
-            _adminCache.Remove(steamId);
+            _adminCache.TryRemove(steamId, out _);
+            _adminCacheTimestamps.TryRemove(steamId, out _);
             return true;
         }
         catch (Exception ex)
@@ -195,11 +200,13 @@ public class AdminDbManager
         try
         {
             if (_adminCache.TryGetValue(steamId, out var cachedAdmin) &&
-                DateTime.UtcNow - _lastCacheUpdate < _cacheLifetime)
+                _adminCacheTimestamps.TryGetValue(steamId, out var cachedAt) &&
+                DateTime.UtcNow - cachedAt < _cacheLifetime)
             {
                 if (cachedAdmin.IsExpired)
                 {
-                    _adminCache.Remove(steamId);
+                    _adminCache.TryRemove(steamId, out _);
+                    _adminCacheTimestamps.TryRemove(steamId, out _);
                     return null;
                 }
                 return cachedAdmin;
@@ -207,27 +214,22 @@ public class AdminDbManager
 
             using var connection = _core.Database.GetConnection("admins");
             var now = DateTime.UtcNow;
-            var admin = connection.FirstOrDefault<Admin>(a =>
-                a.SteamId == steamId &&
-                (a.ExpiresAt == null || a.ExpiresAt > now));
 
-            // Some providers/runtime mappings are inconsistent with ulong predicates.
-            // Fallback to in-memory filtering over all records to avoid false negatives.
-            if (admin == null)
-            {
-                admin = connection
-                    .GetAll<Admin>()
-                    .FirstOrDefault(a => a.SteamId == steamId && (a.ExpiresAt == null || a.ExpiresAt > now));
-            }
+            // Use GetAll + in-memory filter to avoid broken Dommel expression translation
+            // for ulong SteamId comparisons and nullable ExpiresAt IS NULL checks.
+            var admin = connection
+                .GetAll<Admin>()
+                .FirstOrDefault(a => a.SteamId == steamId && (a.ExpiresAt == null || a.ExpiresAt > now));
 
             if (admin != null)
             {
                 _adminCache[steamId] = admin;
-                _lastCacheUpdate = DateTime.UtcNow;
+                _adminCacheTimestamps[steamId] = DateTime.UtcNow;
             }
             else
             {
-                _adminCache.Remove(steamId);
+                _adminCache.TryRemove(steamId, out _);
+                _adminCacheTimestamps.TryRemove(steamId, out _);
             }
 
             return admin;
@@ -244,8 +246,13 @@ public class AdminDbManager
         try
         {
             using var connection = _core.Database.GetConnection("admins");
-            var admins = connection.Select<Admin>(a =>
-                a.ExpiresAt == null || a.ExpiresAt > DateTime.UtcNow)
+            var now = DateTime.UtcNow;
+
+            // Use GetAll + in-memory filter: Dommel's Select<T>(predicate) generates
+            // broken SQL for nullable columns (ExpiresAt IS NULL) on MySQL/SQLite.
+            var admins = connection
+                .GetAll<Admin>()
+                .Where(a => a.ExpiresAt == null || a.ExpiresAt > now)
                 .OrderByDescending(a => a.Immunity)
                 .ThenBy(a => a.Name)
                 .ToList();
@@ -253,8 +260,8 @@ public class AdminDbManager
             foreach (var admin in admins)
             {
                 _adminCache[admin.SteamId] = admin;
+                _adminCacheTimestamps[admin.SteamId] = now;
             }
-            _lastCacheUpdate = DateTime.UtcNow;
             return admins;
         }
         catch (Exception ex)
@@ -336,21 +343,26 @@ public class AdminDbManager
         try
         {
             using var connection = _core.Database.GetConnection("admins");
-            var expiredAdmins = connection.Select<Admin>(a =>
-                a.ExpiresAt != null &&
-                a.ExpiresAt <= DateTime.UtcNow);
+            var now = DateTime.UtcNow;
+
+            // Use GetAll + in-memory filter to avoid broken Dommel nullable predicate translation.
+            var expiredAdmins = connection
+                .GetAll<Admin>()
+                .Where(a => a.ExpiresAt != null && a.ExpiresAt <= now)
+                .ToList();
 
             var cleaned = 0;
             foreach (var admin in expiredAdmins)
             {
                 connection.Delete(admin);
+                _adminCache.TryRemove(admin.SteamId, out _);
+                _adminCacheTimestamps.TryRemove(admin.SteamId, out _);
                 cleaned++;
             }
 
             if (cleaned > 0)
             {
                 _core.Logger.LogInformationIfEnabled("[CS2_Admin] Removed {Count} expired admins", cleaned);
-                _adminCache.Clear();
             }
         }
         catch (Exception ex)
@@ -362,8 +374,23 @@ public class AdminDbManager
     public void ClearCache()
     {
         _adminCache.Clear();
-        _lastCacheUpdate = DateTime.MinValue;
+        _adminCacheTimestamps.Clear();
     }
+
+
+    private static string NormalizeDbString(string? value, int maxLength)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        var normalized = value.Trim();
+        return normalized.Length <= maxLength
+            ? normalized
+            : normalized[..maxLength];
+    }
+
 
     private async Task<(bool IsValid, string NormalizedGroups, int MaxGroupImmunity)> ValidateGroupsAsync(string groups)
     {
@@ -425,12 +452,6 @@ public class AdminDbManager
 
     private static Admin? FindAdminRecordBySteamId(IDbConnection connection, ulong steamId)
     {
-        var admin = connection.FirstOrDefault<Admin>(a => a.SteamId == steamId);
-        if (admin != null)
-        {
-            return admin;
-        }
-
         return connection.GetAll<Admin>().FirstOrDefault(a => a.SteamId == steamId);
     }
 }

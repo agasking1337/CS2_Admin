@@ -10,7 +10,7 @@ namespace CS2_Admin.Database;
 public class BanManager
 {
     private readonly ISwiftlyCore _core;
-    private readonly Dictionary<string, Ban> _banCache = new();
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, Ban> _banCache = new();
     private DateTime _lastCacheUpdate = DateTime.MinValue;
     private readonly TimeSpan _cacheLifetime = TimeSpan.FromMinutes(5);
     private readonly AsyncLocal<AdminContext> _currentAdmin = new();
@@ -439,11 +439,11 @@ public class BanManager
     {
         if (ban.TargetType == BanTargetType.SteamId && ban.SteamId != 0)
         {
-            _banCache.Remove(GetSteamKey(ban.SteamId));
+            _banCache.TryRemove(GetSteamKey(ban.SteamId), out _);
         }
         else if (ban.TargetType == BanTargetType.Ip && !string.IsNullOrWhiteSpace(ban.IpAddress))
         {
-            _banCache.Remove(GetIpKey(ban.IpAddress));
+            _banCache.TryRemove(GetIpKey(ban.IpAddress), out _);
         }
     }
 
@@ -518,7 +518,7 @@ public class BanManager
         try
         {
             using var connection = _core.Database.GetConnection("admins");
-            return connection.Select<Ban>(b => b.SteamId == steamId).Count();
+            return connection.GetAll<Ban>().Count(b => b.SteamId == steamId);
         }
         catch (Exception ex)
         {

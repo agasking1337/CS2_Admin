@@ -33,12 +33,14 @@ public class EventHandlers
     private readonly Dictionary<int, DateTime> _muteWarnTimestamps = new();
     private readonly Dictionary<int, DateTime> _gagWarnTimestamps = new();
     private readonly Dictionary<int, RecentPlayerInfo> _connectedPlayerSnapshots = new();
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<int, long> _playerSessionIds = new();
     private readonly Dictionary<ulong, string> _lastKnownAdminTags = new();
     
     private Guid _chatHookGuid = Guid.Empty;
     private CancellationTokenSource? _expiryCheckCts;
     private CancellationTokenSource? _banEnforceCts;
     private CancellationTokenSource? _tagRefreshCts;
+    private CancellationTokenSource? _muteEnforceCts;
     private volatile bool _databaseReady;
     private int _isBanEnforcementRunning;
 
@@ -88,6 +90,10 @@ public class EventHandlers
         _banEnforceCts = _core.Scheduler.RepeatBySeconds(5f, EnforceOnlineBans);
         _core.Logger.LogInformationIfEnabled("[CS2_Admin] Ban enforcement timer started");
 
+        // Re-apply VoiceFlags every second so mutes survive round events and respawns.
+        _muteEnforceCts = _core.Scheduler.RepeatBySeconds(1f, EnforceOnlineMutes);
+        _core.Logger.LogInformationIfEnabled("[CS2_Admin] Mute enforcement timer started");
+
         if (_tags.Enabled)
         {
             _tagRefreshCts = _core.Scheduler.RepeatBySeconds(15f, () =>
@@ -125,6 +131,9 @@ public class EventHandlers
 
         _banEnforceCts?.Cancel();
         _banEnforceCts = null;
+
+        _muteEnforceCts?.Cancel();
+        _muteEnforceCts = null;
 
         _tagRefreshCts?.Cancel();
         _tagRefreshCts = null;
@@ -184,13 +193,14 @@ public class EventHandlers
             return;
 
         var steamId = player.SteamID;
-        var playerName = player.Controller.PlayerName ?? PluginLocalizer.Get(_core)["unknown"];
+        var playerName = player.Controller?.PlayerName ?? PluginLocalizer.Get(_core)["unknown"];
         var playerIp = player.IPAddress;
+        var connectedAt = DateTime.UtcNow;
         _connectedPlayerSnapshots[playerId] = new RecentPlayerInfo(
             steamId,
             playerName,
             playerIp,
-            DateTime.UtcNow);
+            connectedAt);
         ScheduleDeferredBanRecheck(playerId, 1.5f);
         ScheduleDeferredBanRecheck(playerId, 5f);
 
@@ -205,6 +215,17 @@ public class EventHandlers
                     steamId,
                     playerName,
                     playerIp);
+
+                // Insert player session now that SteamID is available.
+                // OnClientPutInServer fires before Steam auth, so SteamID is 0 there.
+                if (_databaseReady && steamId != 0)
+                {
+                    var sessionId = await _playerIpManager.InsertPlayerSessionAsync(steamId, playerName, playerIp, connectedAt);
+                    if (sessionId > 0)
+                    {
+                        _playerSessionIds[playerId] = sessionId;
+                    }
+                }
 
                 // Match T3 behavior: cleanup before authorize check.
                 await _banManager.CleanupExpiredBansAsync();
@@ -239,7 +260,8 @@ public class EventHandlers
                     });
                 }
 
-                // Load admin permissions
+                // Load admin permissions — warm group cache first so ResolveGroupsAsync never misses
+                await _groupManager.GetAllGroupsAsync();
                 var admin = await _adminManager.GetAdminAsync(steamId);
                 if (admin != null && admin.IsActive)
                 {
@@ -412,6 +434,27 @@ public class EventHandlers
         });
     }
 
+    private void EnforceOnlineMutes()
+    {
+        if (!_databaseReady)
+        {
+            return;
+        }
+
+        foreach (var player in _core.PlayerManager.GetAllPlayers().Where(p => p.IsValid && !p.IsFakeClient))
+        {
+            var cachedMute = _muteManager.GetActiveMuteFromCache(player.SteamID);
+            if (cachedMute != null && cachedMute.IsActive)
+            {
+                if (player.VoiceFlags != VoiceFlagValue.Muted)
+                {
+                    player.VoiceFlags = VoiceFlagValue.Muted;
+                    _core.Logger.LogInformationIfEnabled("[CS2_Admin] Re-applied mute VoiceFlags to {SteamId}", player.SteamID);
+                }
+            }
+        }
+    }
+
     private async Task SendJoinPunishmentSummaryAsync(int playerId, ulong steamId)
     {
         try
@@ -424,7 +467,7 @@ public class EventHandlers
             var joiningState = await RunOnMainThreadAsync(() =>
             {
                 var player = _core.PlayerManager.GetPlayer(playerId);
-                return (player?.IPAddress, player?.Controller.PlayerName);
+                return (player?.IPAddress, player?.Controller?.PlayerName);
             });
             var activeBan = await _banManager.GetActiveBanAsync(steamId, joiningState.IPAddress, _multiServerConfig.Enabled);
             var activeMute = await _muteManager.GetActiveMuteAsync(steamId);
@@ -515,6 +558,52 @@ public class EventHandlers
         }
     }
 
+    public void OnClientPutInServer(IOnClientPutInServerEvent @event)
+    {
+        var playerId = @event.PlayerId;
+
+        // SteamID is not yet available at PutInServer time (fires before Steam auth).
+        // Schedule a deferred insert so the session is created once SteamID is populated.
+        _core.Scheduler.DelayBySeconds(3f, () =>
+        {
+            var player = _core.PlayerManager.GetPlayer(playerId);
+            if (player?.IsValid != true || player.SteamID == 0)
+                return;
+
+            var steamId = player.SteamID;
+            var playerName = player.Controller?.PlayerName;
+            var playerIp = player.IPAddress;
+            var connectedAt = DateTime.UtcNow;
+
+            // Cache player info so OnClientDisconnected has a fallback when the
+            // player object is already invalidated by the engine.
+            if (!_connectedPlayerSnapshots.ContainsKey(playerId))
+            {
+                _connectedPlayerSnapshots[playerId] = new RecentPlayerInfo(
+                    steamId,
+                    playerName ?? steamId.ToString(),
+                    playerIp ?? string.Empty,
+                    connectedAt);
+            }
+            else
+            {
+                connectedAt = _connectedPlayerSnapshots[playerId].LastSeenAt;
+            }
+
+            if (_playerSessionIds.ContainsKey(playerId) || !_databaseReady)
+                return;
+
+            _ = Task.Run(async () =>
+            {
+                var sessionId = await _playerIpManager.InsertPlayerSessionAsync(steamId, playerName, playerIp, connectedAt);
+                if (sessionId > 0)
+                {
+                    _playerSessionIds[playerId] = sessionId;
+                }
+            });
+        });
+    }
+
     public void OnClientDisconnected(IOnClientDisconnectedEvent @event)
     {
         var playerId = @event.PlayerId;
@@ -524,29 +613,56 @@ public class EventHandlers
 
         RecentPlayerInfo? snapshot = null;
         var player = _core.PlayerManager.GetPlayer(playerId);
-        if (player?.IsValid == true)
+        
+        ulong steamId = player?.IsValid == true ? player.SteamID : 0;
+        string? playerName = player?.IsValid == true ? player.Controller?.PlayerName : null;
+        string? ipAddress = player?.IsValid == true ? player.IPAddress : null;
+
+        if (_connectedPlayerSnapshots.TryGetValue(playerId, out var cached))
+        {
+            if (steamId == 0) steamId = cached.SteamId;
+            if (string.IsNullOrEmpty(playerName) || playerName == PluginLocalizer.Get(_core)["unknown"]) playerName = cached.Name;
+            if (string.IsNullOrEmpty(ipAddress)) ipAddress = cached.IpAddress;
+        }
+
+        if (steamId != 0)
         {
             snapshot = new RecentPlayerInfo(
-                player.SteamID,
-                player.Controller.PlayerName ?? PluginLocalizer.Get(_core)["unknown"],
-                player.IPAddress,
+                steamId,
+                playerName ?? PluginLocalizer.Get(_core)["unknown"],
+                ipAddress ?? PluginLocalizer.Get(_core)["unknown"],
                 DateTime.UtcNow);
         }
-        else if (_connectedPlayerSnapshots.TryGetValue(playerId, out var cached))
+
+        _core.Logger.LogInformationIfEnabled(
+            "[CS2_Admin] OnClientDisconnected playerId={PlayerId} steamId={SteamId} hasSnapshot={HasSnapshot} ip={Ip}",
+            playerId, steamId, snapshot != null, snapshot?.IpAddress ?? "none");
+
+        if (DebugSettings.LoggingEnabled)
         {
-            snapshot = cached with { LastSeenAt = DateTime.UtcNow };
+            _core.Logger.LogInformation("[CS2_Admin][SessionDebug] OnClientDisconnected fired. playerId={PlayerId} steamId={SteamId} sessionIdKnown={HasSessionId}", playerId, steamId, _playerSessionIds.ContainsKey(playerId));
         }
 
         if (snapshot != null)
         {
             _recentPlayersTracker.Add(snapshot);
+            var disconnectedAt = DateTime.UtcNow;
+            _playerSessionIds.TryGetValue(playerId, out var sessionId);
             _ = Task.Run(async () =>
             {
                 await _playerIpManager.UpsertPlayerIpAsync(snapshot.SteamId, snapshot.Name, snapshot.IpAddress);
+                await _playerIpManager.ClosePlayerSessionAsync(sessionId, snapshot.Name, disconnectedAt, snapshot.SteamId);
+
+                if (sessionId == 0)
+                {
+                    await Task.Delay(750);
+                    await _playerIpManager.ClosePlayerSessionAsync(0, snapshot.Name, disconnectedAt, snapshot.SteamId);
+                }
             });
         }
 
         _connectedPlayerSnapshots.Remove(playerId);
+        _playerSessionIds.TryRemove(playerId, out _);
 
         OnPlayerDisconnected?.Invoke(playerId);
     }
@@ -690,11 +806,6 @@ public class EventHandlers
 
         foreach (var snapshot in snapshots)
         {
-            foreach (var permission in managedPermissions)
-            {
-                _core.Permission.RemovePermission(snapshot.SteamID, permission);
-            }
-
             var admin = await _adminManager.GetAdminAsync(snapshot.SteamID);
             if (admin == null && adminsBySteamId.TryGetValue(snapshot.SteamID, out var scannedAdmin))
             {
@@ -708,6 +819,22 @@ public class EventHandlers
                     .Select(f => f.Trim())
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToArray();
+            }
+
+            // Only wipe+reapply if we know for sure whether this player is an admin or not.
+            // If admin == null they are definitely not an admin — safe to wipe.
+            // If admin != null but flags resolved to empty it means a transient DB/cache issue —
+            // skip the wipe so we don't accidentally strip an admin's permissions.
+            var knownNonAdmin = admin == null || !admin.IsActive;
+            if (!knownNonAdmin && effectiveFlags.Length == 0)
+            {
+                _core.Logger.LogWarningIfEnabled("[CS2_Admin] RefreshAdminState: skipping permission wipe for {SteamId} — admin record found but flags resolved empty (transient miss)", snapshot.SteamID);
+                continue;
+            }
+
+            foreach (var permission in managedPermissions)
+            {
+                _core.Permission.RemovePermission(snapshot.SteamID, permission);
             }
 
             var hasRoot = false;
@@ -877,17 +1004,33 @@ public class EventHandlers
             return HookResult.Continue;
 
         var trimmed = string.IsNullOrWhiteSpace(text) ? string.Empty : text.Trim();
-        if (!string.IsNullOrWhiteSpace(trimmed)
-            && (trimmed.StartsWith("!@", StringComparison.Ordinal) || trimmed.StartsWith("/@", StringComparison.Ordinal)))
+        var adminChatPrefixLen = 0;
+        if (!string.IsNullOrWhiteSpace(trimmed))
         {
-            var messageText = trimmed.Length > 2 ? trimmed[2..].Trim() : string.Empty;
+            if (trimmed.StartsWith("!@u", StringComparison.Ordinal) || trimmed.StartsWith("/@u", StringComparison.Ordinal))
+            {
+                adminChatPrefixLen = 3;
+            }
+            else if (trimmed.StartsWith("!@", StringComparison.Ordinal) || trimmed.StartsWith("/@", StringComparison.Ordinal))
+            {
+                adminChatPrefixLen = 2;
+            }
+            else if (trimmed.StartsWith("@u", StringComparison.Ordinal))
+            {
+                adminChatPrefixLen = 2;
+            }
+        }
+
+        if (adminChatPrefixLen > 0)
+        {
+            var messageText = trimmed.Length > adminChatPrefixLen ? trimmed[adminChatPrefixLen..].Trim() : string.Empty;
             if (string.IsNullOrWhiteSpace(messageText))
             {
                 player.SendChat($" \x02{PluginLocalizer.Get(_core)["prefix"]}\x01 {PluginLocalizer.Get(_core)["asay_usage"]}");
                 return HookResult.Stop;
             }
 
-            var adminName = player.Controller.PlayerName ?? PluginLocalizer.Get(_core)["console_name"];
+            var adminName = player.Controller?.PlayerName ?? PluginLocalizer.Get(_core)["console_name"];
             var prefix = PluginLocalizer.Get(_core)["asay_prefix"];
             var msg = $" \x04{prefix}\x01 \x10{adminName}\x01: {messageText}";
 
@@ -937,7 +1080,7 @@ public class EventHandlers
                 _core.Logger.LogInformationIfEnabled("[CS2_Admin][Debug] gag chat blocked steamid={SteamId} playerId={PlayerId}", steamId, playerId);
             }
 
-            var playerName = player.Controller.PlayerName ?? PluginLocalizer.Get(_core)["unknown"];
+            var playerName = player.Controller?.PlayerName ?? PluginLocalizer.Get(_core)["unknown"];
             var strippedText = string.IsNullOrWhiteSpace(text) ? "-" : text.Trim();
             var preview = strippedText.Length <= 220 ? strippedText : $"{strippedText[..220]}...";
 
@@ -959,11 +1102,46 @@ public class EventHandlers
             return HookResult.Stop; // Block the chat message
         }
         
-        // Check database asynchronously for cache miss (for next time)
-        _ = Task.Run(async () =>
+        // Cache miss — do a synchronous blocking DB lookup so no message slips through.
+        var dbGag = _gagManager.GetActiveGagAsync(steamId).GetAwaiter().GetResult();
+        if (dbGag != null && dbGag.IsActive)
         {
-            await _gagManager.GetActiveGagAsync(steamId);
-        });
+            bool shouldShowMessage = !_gagWarnTimestamps.ContainsKey(playerId) ||
+                                   (DateTime.UtcNow - _gagWarnTimestamps[playerId]).TotalSeconds >= 5;
+
+            if (shouldShowMessage)
+            {
+                if (dbGag.IsPermanent)
+                {
+                    player.SendChat($" \x02{PluginLocalizer.Get(_core)["prefix"]}\x01 {PluginLocalizer.Get(_core)["gagged_chat_warning_permanent"]}");
+                }
+                else
+                {
+                    var remainingMinutes = (int)Math.Ceiling(dbGag.TimeRemaining!.Value.TotalMinutes);
+                    player.SendChat($" \x02{PluginLocalizer.Get(_core)["prefix"]}\x01 {PluginLocalizer.Get(_core)["gagged_chat_warning_minutes", remainingMinutes]}");
+                }
+                _gagWarnTimestamps[playerId] = DateTime.UtcNow;
+                _core.Logger.LogInformationIfEnabled("[CS2_Admin][Debug] gag chat blocked (db) steamid={SteamId} playerId={PlayerId}", steamId, playerId);
+            }
+
+            var playerName2 = player.Controller?.PlayerName ?? PluginLocalizer.Get(_core)["unknown"];
+            var strippedText2 = string.IsNullOrWhiteSpace(text) ? "-" : text.Trim();
+            var preview2 = strippedText2.Length <= 220 ? strippedText2 : $"{strippedText2[..220]}...";
+
+            foreach (var admin in _core.PlayerManager.GetAllPlayers().Where(p => p.IsValid && !p.IsFakeClient))
+            {
+                var canSee =
+                    _core.Permission.PlayerHasPermission(admin.SteamID, _permissions.AdminRoot) ||
+                    (!string.IsNullOrWhiteSpace(_permissions.AdminMenu) && _core.Permission.PlayerHasPermission(admin.SteamID, _permissions.AdminMenu)) ||
+                    (!string.IsNullOrWhiteSpace(_permissions.ListPlayers) && _core.Permission.PlayerHasPermission(admin.SteamID, _permissions.ListPlayers));
+
+                if (!canSee) continue;
+
+                admin.SendChat($" \x02{PluginLocalizer.Get(_core)["prefix"]}\x01 {PluginLocalizer.Get(_core)["gagged_chat_admin_visible", playerName2, preview2]}");
+            }
+
+            return HookResult.Stop;
+        }
 
         return HookResult.Continue;
     }
@@ -1017,6 +1195,39 @@ public class EventHandlers
             // Players may have authorized before DB became ready.
             // Re-apply admin state and emit summaries once DB is available.
             await RefreshAdminStateForAllOnlinePlayersAsync();
+
+            var onlineDetails = await RunOnMainThreadAsync(() =>
+                _core.PlayerManager
+                    .GetAllPlayers()
+                    .Where(p => p.IsValid && !p.IsFakeClient && p.SteamID != 0)
+                    .Select(p => (p.PlayerID, p.SteamID, p.Controller?.PlayerName, p.IPAddress))
+                    .ToList());
+
+            if (DebugSettings.LoggingEnabled)
+            {
+                _core.Logger.LogInformation("[CS2_Admin][SessionDebug] DB ready. Backfill online sessions candidates={Count}", onlineDetails.Count);
+            }
+
+            _ = Task.Run(async () =>
+            {
+                foreach (var detail in onlineDetails)
+                {
+                    if (_playerSessionIds.ContainsKey(detail.PlayerID))
+                    {
+                        continue;
+                    }
+
+                    var connectedAt = _connectedPlayerSnapshots.TryGetValue(detail.PlayerID, out var snap)
+                        ? snap.LastSeenAt
+                        : DateTime.UtcNow;
+
+                    var sessionId = await _playerIpManager.InsertPlayerSessionAsync(detail.SteamID, detail.PlayerName, detail.IPAddress, connectedAt);
+                    if (sessionId > 0)
+                    {
+                        _playerSessionIds[detail.PlayerID] = sessionId;
+                    }
+                }
+            });
 
             var snapshots = await RunOnMainThreadAsync(() =>
                 _core.PlayerManager

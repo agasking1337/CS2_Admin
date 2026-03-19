@@ -9,8 +9,8 @@ namespace CS2_Admin.Database;
 public class GroupDbManager
 {
     private readonly ISwiftlyCore _core;
-    private readonly Dictionary<string, AdminGroup> _cache = new(StringComparer.OrdinalIgnoreCase);
-    private DateTime _lastCacheUpdate = DateTime.MinValue;
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, AdminGroup> _cache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, DateTime> _cacheTimestamps = new(StringComparer.OrdinalIgnoreCase);
     private readonly TimeSpan _cacheLifetime = TimeSpan.FromMinutes(5);
 
     public GroupDbManager(ISwiftlyCore core)
@@ -40,7 +40,9 @@ public class GroupDbManager
             return null;
         }
 
-        if (_cache.TryGetValue(normalizedName, out var cached) && DateTime.UtcNow - _lastCacheUpdate < _cacheLifetime)
+        if (_cache.TryGetValue(normalizedName, out var cached) &&
+            _cacheTimestamps.TryGetValue(normalizedName, out var cachedAt) &&
+            DateTime.UtcNow - cachedAt < _cacheLifetime)
         {
             return cached;
         }
@@ -53,8 +55,9 @@ public class GroupDbManager
                             .FirstOrDefault(g => g.Name.Equals(normalizedName, StringComparison.OrdinalIgnoreCase));
             if (group != null)
             {
-                _cache[NormalizeGroupName(group.Name)] = group;
-                _lastCacheUpdate = DateTime.UtcNow;
+                var key = NormalizeGroupName(group.Name);
+                _cache[key] = group;
+                _cacheTimestamps[key] = DateTime.UtcNow;
             }
             return group;
         }
@@ -71,11 +74,13 @@ public class GroupDbManager
         {
             using var connection = _core.Database.GetConnection("admins");
             var groups = connection.GetAll<AdminGroup>().OrderByDescending(x => x.Immunity).ThenBy(x => x.Name).ToList();
+            var now = DateTime.UtcNow;
             foreach (var group in groups)
             {
-                _cache[NormalizeGroupName(group.Name)] = group;
+                var key = NormalizeGroupName(group.Name);
+                _cache[key] = group;
+                _cacheTimestamps[key] = now;
             }
-            _lastCacheUpdate = DateTime.UtcNow;
             return groups;
         }
         catch (Exception ex)
@@ -107,6 +112,7 @@ public class GroupDbManager
                 existing.UpdatedAt = DateTime.UtcNow;
                 connection.Update(existing);
                 _cache[normalizedName] = existing;
+                _cacheTimestamps[normalizedName] = DateTime.UtcNow;
             }
             else
             {
@@ -120,9 +126,9 @@ public class GroupDbManager
                 };
                 connection.Insert(group);
                 _cache[normalizedName] = group;
+                _cacheTimestamps[normalizedName] = DateTime.UtcNow;
             }
 
-            _lastCacheUpdate = DateTime.UtcNow;
             return true;
         }
         catch (Exception ex)
@@ -152,7 +158,8 @@ public class GroupDbManager
             }
 
             connection.Delete(existing);
-            _cache.Remove(normalizedName);
+            _cache.TryRemove(normalizedName, out _);
+            _cacheTimestamps.TryRemove(normalizedName, out _);
             return true;
         }
         catch (Exception ex)
@@ -224,7 +231,7 @@ public class GroupDbManager
     public void ClearCache()
     {
         _cache.Clear();
-        _lastCacheUpdate = DateTime.MinValue;
+        _cacheTimestamps.Clear();
     }
 
     private static string NormalizeGroupName(string rawName)

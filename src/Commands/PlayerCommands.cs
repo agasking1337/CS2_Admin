@@ -30,12 +30,14 @@ public class PlayerCommands
     private readonly WarnManager _warnManager;
     private readonly AdminDbManager _adminDbManager;
     private readonly AdminLogManager _adminLogManager;
+    private readonly PlayerIpDbManager _playerIpDbManager;
     private readonly MultiServerConfig _multiServerConfig;
     private readonly HashSet<int> _noclipPlayers = new();
     private readonly HashSet<int> _frozenPlayers = new();
     private readonly HashSet<int> _beaconPlayers = new();
     private readonly HashSet<int> _burnPlayers = new();
     private readonly HashSet<int> _drugPlayers = new();
+    private readonly HashSet<int> _hiddenPlayers = new();
     private readonly Dictionary<int, QAngle> _drugOriginalRotations = new();
 
     private record PlayerListEntry(
@@ -65,6 +67,7 @@ public class PlayerCommands
         WarnManager warnManager,
         AdminDbManager adminDbManager,
         AdminLogManager adminLogManager,
+        PlayerIpDbManager playerIpDbManager,
         MultiServerConfig multiServerConfig)
     {
         _core = core;
@@ -80,6 +83,7 @@ public class PlayerCommands
         _warnManager = warnManager;
         _adminDbManager = adminDbManager;
         _adminLogManager = adminLogManager;
+        _playerIpDbManager = playerIpDbManager;
         _multiServerConfig = multiServerConfig;
     }
 
@@ -1678,6 +1682,7 @@ public class PlayerCommands
             var admin = await _adminDbManager.GetAdminAsync(steamId64);
             var effectiveFlags = await _adminDbManager.GetEffectiveFlagsAsync(steamId64);
             var effectiveImmunity = await _adminDbManager.GetEffectiveImmunityAsync(steamId64);
+            var primaryGroup = await _adminDbManager.GetPrimaryGroupNameAsync(steamId64);
             var ban = await _banManager.GetActiveBanAsync(steamId64, targetIp, _multiServerConfig.Enabled);
             var mute = await _muteManager.GetActiveMuteAsync(steamId64);
             var gag = await _gagManager.GetActiveGagAsync(steamId64);
@@ -1710,8 +1715,25 @@ public class PlayerCommands
                     PluginLocalizer.Get(_core)["who_alive", isAlive ? PluginLocalizer.Get(_core)["players_yes"] : PluginLocalizer.Get(_core)["players_no"]]
                 };
 
+                lines.Add(PluginLocalizer.Get(_core)["who_is_admin", admin != null ? PluginLocalizer.Get(_core)["players_yes"] : PluginLocalizer.Get(_core)["players_no"]]);
+
                 if (admin != null)
                 {
+                    var groups = admin.GroupList.Count == 0
+                        ? PluginLocalizer.Get(_core)["who_none"]
+                        : string.Join(",", admin.GroupList);
+
+                    var groupType = string.IsNullOrWhiteSpace(primaryGroup)
+                        ? groups
+                        : $"{primaryGroup} ({groups})";
+
+                    lines.Add(PluginLocalizer.Get(_core)["who_admin_type", groupType]);
+
+                    var expires = admin.IsPermanent
+                        ? PluginLocalizer.Get(_core)["duration_permanent"]
+                        : admin.ExpiresAt?.ToString("yyyy-MM-dd HH:mm:ss") ?? PluginLocalizer.Get(_core)["who_unknown"];
+                    lines.Add(PluginLocalizer.Get(_core)["who_admin_expires", expires]);
+
                     var flags = effectiveFlags.Length == 0
                         ? PluginLocalizer.Get(_core)["who_none"]
                         : string.Join(",", effectiveFlags);
@@ -1800,59 +1822,64 @@ public class PlayerCommands
             maxCount = Math.Clamp(parsedCount, 1, 30);
         }
 
-        var recent = _recentPlayersTracker.GetRecent();
-        var lines = new List<string>
+        _ = Task.Run(async () =>
         {
-            "--- Last disconnected players ---"
-        };
+            var dbRows = await _playerIpDbManager.GetRecentDisconnectedAsync(maxCount);
 
-        var shown = 0;
-        foreach (var entry in recent)
-        {
-            if (shown >= maxCount)
+            var mergedAndSorted = dbRows
+                .Select(row => new RecentPlayerInfo(
+                    row.SteamId,
+                    row.PlayerName ?? PluginLocalizer.Get(_core)["unknown"],
+                    row.IpAddress ?? PluginLocalizer.Get(_core)["unknown"],
+                    row.DisconnectedAt ?? row.ConnectedAt))
+                .ToList();
+
+            var lines = new List<string>
             {
-                break;
+                "--- Last disconnected players ---"
+            };
+
+            var shown = 0;
+            foreach (var entry in mergedAndSorted)
+            {
+                var age = DateTime.UtcNow - entry.LastSeenAt;
+                var ageText = age.TotalSeconds < 0
+                    ? "0s"
+                    : age.TotalHours >= 1
+                        ? $"{(int)age.TotalHours}h {age.Minutes}m"
+                        : age.TotalMinutes >= 1
+                            ? $"{(int)age.TotalMinutes}m {age.Seconds}s"
+                            : $"{age.Seconds}s";
+
+                lines.Add($"#{shown + 1}: {entry.Name} | {entry.SteamId} | last seen {ageText} ago");
+                shown++;
             }
 
-            if (entry.SteamId == 0)
+            if (shown == 0)
             {
-                continue;
+                lines.Add("No recent disconnected players tracked yet.");
             }
 
-            var age = DateTime.UtcNow - entry.LastSeenAt;
-            var ageText = age.TotalSeconds < 0
-                ? "0s"
-                : age.TotalHours >= 1
-                    ? $"{(int)age.TotalHours}h {age.Minutes}m"
-                    : age.TotalMinutes >= 1
-                        ? $"{(int)age.TotalMinutes}m {age.Seconds}s"
-                        : $"{age.Seconds}s";
+            lines.Add("---------------------------------");
 
-            lines.Add($"#{shown + 1}: {entry.Name} | {entry.SteamId} | last seen {ageText} ago");
-            shown++;
-        }
-
-        if (shown == 0)
-        {
-            lines.Add("No recent disconnected players tracked yet.");
-        }
-
-        lines.Add("---------------------------------");
-
-        var output = string.Join('\n', lines);
-        if (context.IsSentByPlayer && context.Sender != null)
-        {
-            context.Sender.SendConsole(output);
-
-            if (context.Sender.IsValid && !context.Sender.IsFakeClient)
+            var output = string.Join('\n', lines);
+            _core.Scheduler.NextTick(() =>
             {
-                context.Sender.SendChat($" \x02{PluginLocalizer.Get(_core)["prefix"]}\x01 Printed last disconnected players to your console.");
-            }
-        }
-        else
-        {
-            _core.Logger.LogInformationIfEnabled("{LastPlayers}", output);
-        }
+                if (context.IsSentByPlayer && context.Sender != null)
+                {
+                    context.Sender.SendConsole(output);
+
+                    if (context.Sender.IsValid && !context.Sender.IsFakeClient)
+                    {
+                        context.Sender.SendChat($" \x02{PluginLocalizer.Get(_core)["prefix"]}\x01 Printed last disconnected players to your console.");
+                    }
+                }
+                else
+                {
+                    _core.Logger.LogInformationIfEnabled("{LastPlayers}", output);
+                }
+            });
+        });
     }
 
     public void OnPlayerDisconnect(int playerId)
@@ -2185,6 +2212,80 @@ public class PlayerCommands
         catch
         {
             return false;
+        }
+    }
+
+    public void OnHideCommand(ICommandContext context)
+    {
+        var args = CommandAliasUtils.NormalizeCommandArgs(context.Args, _commands.Hide);
+
+        if (!HasPermission(context, _permissions.Hide))
+        {
+            context.Reply($" \x02{PluginLocalizer.Get(_core)["prefix"]}\x01 {PluginLocalizer.Get(_core)["no_permission"]}");
+            return;
+        }
+
+        if (!context.IsSentByPlayer || context.Sender == null)
+        {
+            context.Reply($" \x02{PluginLocalizer.Get(_core)["prefix"]}\x01 {PluginLocalizer.Get(_core)["player_only_command"]}");
+            return;
+        }
+
+        var admin = context.Sender;
+        var adminName = admin.Controller.PlayerName ?? PluginLocalizer.Get(_core)["console_name"];
+        var isCurrentlyHidden = _hiddenPlayers.Contains(admin.PlayerID);
+
+        if (isCurrentlyHidden)
+        {
+            _hiddenPlayers.Remove(admin.PlayerID);
+            admin.SendChat($" \x02{PluginLocalizer.Get(_core)["prefix"]}\x01 You are no longer hidden.");
+            
+            if (admin.Controller.TeamNum <= 1)
+            {
+                admin.ChangeTeam(Team.Spectator);
+            }
+
+            _ = _adminLogManager.AddLogAsync("hide", adminName, admin.SteamID, null, null, "state=off");
+            _core.Logger.LogInformationIfEnabled("[CS2_Admin] {Admin} disabled hide mode", adminName);
+        }
+        else
+        {
+            _hiddenPlayers.Add(admin.PlayerID);
+            
+            _core.Engine.ExecuteCommand("sv_disable_teamselect_menu 1");
+            
+            if (admin.PlayerPawn?.IsValid == true && admin.PlayerPawn.Health > 0)
+            {
+                admin.PlayerPawn.CommitSuicide(false, true);
+            }
+
+            admin.SendChat($" \x02{PluginLocalizer.Get(_core)["prefix"]}\x01 You are now hidden.");
+
+            _core.Scheduler.DelayBySeconds(0.15f, () =>
+            {
+                var liveAdmin = _core.PlayerManager.GetAllPlayers().FirstOrDefault(p => p.IsValid && p.SteamID == admin.SteamID);
+                if (liveAdmin != null && liveAdmin.Controller.TeamNum > 1)
+                {
+                    liveAdmin.ChangeTeam(Team.Spectator);
+                }
+            });
+
+            _core.Scheduler.DelayBySeconds(0.26f, () =>
+            {
+                var liveAdmin = _core.PlayerManager.GetAllPlayers().FirstOrDefault(p => p.IsValid && p.SteamID == admin.SteamID);
+                if (liveAdmin != null)
+                {
+                    liveAdmin.ChangeTeam(Team.None);
+                }
+            });
+
+            _core.Scheduler.DelayBySeconds(0.50f, () =>
+            {
+                _core.Engine.ExecuteCommand("sv_disable_teamselect_menu 0");
+            });
+
+            _ = _adminLogManager.AddLogAsync("hide", adminName, admin.SteamID, null, null, "state=on");
+            _core.Logger.LogInformationIfEnabled("[CS2_Admin] {Admin} enabled hide mode", adminName);
         }
     }
 
