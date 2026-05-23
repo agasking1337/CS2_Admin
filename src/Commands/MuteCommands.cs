@@ -133,7 +133,7 @@ public class MuteCommands
                         PlayerUtils.SendNotification(targetPlayer, _messagesConfig,
                             PluginLocalizer.Get(_core)["muted_personal_html", durationDisplay, reason],
                             $" \x02{PluginLocalizer.Get(_core)["prefix"]}\x01 {PluginLocalizer.Get(_core)["muted_personal_chat", durationText, reason]}");
-                        targetPlayer.VoiceFlags = VoiceFlagValue.Muted;
+                        PlayerUtils.ApplyVoiceMute(_core, targetPlayer);
                     }
                 });
 
@@ -219,7 +219,7 @@ public class MuteCommands
                         PlayerUtils.SendNotification(targetPlayer, _messagesConfig,
                             PluginLocalizer.Get(_core)["unmuted_personal_html", reason],
                             $" \x02{PluginLocalizer.Get(_core)["prefix"]}\x01 {PluginLocalizer.Get(_core)["unmuted_personal_chat", reason]}");
-                        targetPlayer.VoiceFlags = VoiceFlagValue.Normal;
+                        PlayerUtils.ClearVoiceMute(_core, targetPlayer);
                     }
                 });
 
@@ -496,7 +496,7 @@ public class MuteCommands
                         PlayerUtils.SendNotification(targetPlayer, _messagesConfig,
                             PluginLocalizer.Get(_core)["silenced_personal_html", durationDisplay, reason],
                             $" \x02{PluginLocalizer.Get(_core)["prefix"]}\x01 {PluginLocalizer.Get(_core)["silenced_personal_chat", durationText, reason]}");
-                        targetPlayer.VoiceFlags = VoiceFlagValue.Muted;
+                        PlayerUtils.ApplyVoiceMute(_core, targetPlayer);
                     }
                 });
 
@@ -589,7 +589,7 @@ public class MuteCommands
                         PlayerUtils.SendNotification(targetPlayer, _messagesConfig,
                             PluginLocalizer.Get(_core)["unsilenced_personal_html", reason],
                             $" \x02{PluginLocalizer.Get(_core)["prefix"]}\x01 {PluginLocalizer.Get(_core)["unsilenced_personal_chat", reason]}");
-                        targetPlayer.VoiceFlags = VoiceFlagValue.Normal;
+                        PlayerUtils.ClearVoiceMute(_core, targetPlayer);
                     }
                 });
 

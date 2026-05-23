@@ -330,4 +330,43 @@ public static class PlayerUtils
             player.SendChat(chatMessage);
         }
     }
+
+    /// <summary>
+    /// Prevents all other online players from hearing the muted player by setting Listen_Mute overrides.
+    /// Must be called on the game thread (NextTick).
+    /// </summary>
+    public static void ApplyVoiceMute(ISwiftlyCore core, IPlayer mutedPlayer)
+    {
+        var mutedSlot = mutedPlayer.PlayerID;
+        foreach (var listener in core.PlayerManager.GetAllPlayers().Where(p => p.IsValid && p.PlayerID != mutedSlot))
+        {
+            listener.SetListenOverride(mutedSlot, ListenOverride.Mute);
+        }
+    }
+
+    /// <summary>
+    /// Restores all other online players so they can hear the previously-muted player again (Listen_Default).
+    /// Must be called on the game thread (NextTick).
+    /// </summary>
+    public static void ClearVoiceMute(ISwiftlyCore core, IPlayer unmutedPlayer)
+    {
+        var unmutedSlot = unmutedPlayer.PlayerID;
+        foreach (var listener in core.PlayerManager.GetAllPlayers().Where(p => p.IsValid && p.PlayerID != unmutedSlot))
+        {
+            listener.SetListenOverride(unmutedSlot, ListenOverride.Default);
+        }
+    }
+
+    /// <summary>
+    /// Re-applies Listen_Mute overrides for any newly connected player so they also cannot hear muted players.
+    /// Must be called on the game thread (NextTick).
+    /// </summary>
+    public static void ApplyVoiceMuteForNewListener(ISwiftlyCore core, IPlayer newListener, IEnumerable<ulong> mutedSteamIds)
+    {
+        var mutedSet = new HashSet<ulong>(mutedSteamIds);
+        foreach (var muted in core.PlayerManager.GetAllPlayers().Where(p => p.IsValid && mutedSet.Contains(p.SteamID) && p.PlayerID != newListener.PlayerID))
+        {
+            newListener.SetListenOverride(muted.PlayerID, ListenOverride.Mute);
+        }
+    }
 }

@@ -165,6 +165,12 @@ public class MuteManager
         return null;
     }
 
+    public Mute? GetMuteFromCache(ulong steamId)
+    {
+        _muteCache.TryGetValue(steamId, out Mute? cachedMute);
+        return cachedMute;
+    }
+
     public async Task<int> GetTotalMutesAsync(ulong steamId)
     {
         return await Task.Run(() =>
@@ -224,6 +230,20 @@ public class MuteManager
     {
         _muteCache.Clear();
         _cacheUpdateTimes.Clear();
+    }
+
+    public void RemoveFromCache(ulong steamId)
+    {
+        _muteCache.TryRemove(steamId, out _);
+        _cacheUpdateTimes.TryRemove(steamId, out _);
+    }
+
+    public List<ulong> GetAllActiveMutedSteamIds()
+    {
+        return _muteCache
+            .Where(kv => kv.Value.IsActive)
+            .Select(kv => kv.Key)
+            .ToList();
     }
 }
 

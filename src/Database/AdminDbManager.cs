@@ -284,6 +284,20 @@ public class AdminDbManager
         return Math.Max(admin.Immunity, groupImmunity);
     }
 
+    public int GetEffectiveImmunitySync(ulong steamId)
+    {
+        if (!_adminCache.TryGetValue(steamId, out var admin) ||
+            !_adminCacheTimestamps.TryGetValue(steamId, out var cachedAt) ||
+            DateTime.UtcNow - cachedAt >= _cacheLifetime ||
+            admin == null || !admin.IsActive)
+        {
+            return 0;
+        }
+
+        var groupImmunity = _groupManager.GetGroupImmunitySync(admin.GroupList);
+        return Math.Max(admin.Immunity, groupImmunity);
+    }
+
     public async Task<string[]> GetEffectiveFlagsAsync(ulong steamId)
     {
         var admin = await GetAdminAsync(steamId);

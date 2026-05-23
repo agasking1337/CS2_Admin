@@ -224,10 +224,10 @@ public class PlayerCommands
                     livePawn.HealthUpdated();
                 }
 
-                // Slap feedback: immediate knockback scales with damage.
+                // Slap feedback: immediate knockback scales with knockback strength.
                 var currentVelocity = livePawn.AbsVelocity;
-                var verticalBoost = Math.Clamp(140f + (knockbackStrength * 4f), 180f, 720f);
-                var horizontalBoost = Math.Clamp(20f + (knockbackStrength * 1.8f), 30f, 240f);
+                var verticalBoost = Math.Clamp(300f + (knockbackStrength * 8f), 350f, 1200f);
+                var horizontalBoost = Math.Clamp(80f + (knockbackStrength * 4f), 120f, 500f);
                 var randomX = (float)(Random.Shared.NextDouble() * 2.0 - 1.0) * horizontalBoost;
                 var randomY = (float)(Random.Shared.NextDouble() * 2.0 - 1.0) * horizontalBoost;
                 livePawn.AbsVelocity = new Vector(
@@ -2317,8 +2317,8 @@ public class PlayerCommands
             return false;
         }
 
-        var adminImm = _adminDbManager.GetEffectiveImmunityAsync(context.Sender.SteamID).GetAwaiter().GetResult();
-        var targetImm = _adminDbManager.GetEffectiveImmunityAsync(target.SteamID).GetAwaiter().GetResult();
+        var adminImm = _adminDbManager.GetEffectiveImmunitySync(context.Sender.SteamID);
+        var targetImm = _adminDbManager.GetEffectiveImmunitySync(target.SteamID);
         if (targetImm >= adminImm && targetImm > 0)
         {
             context.Reply($" \x02{PluginLocalizer.Get(_core)["prefix"]}\x01 {PluginLocalizer.Get(_core)["cannot_target_immunity"]}");

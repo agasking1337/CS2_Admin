@@ -152,12 +152,12 @@ public class EventHandlers
             var playerId = player.PlayerID;
             
             // Check mute expiry
-            var cachedMute = _muteManager.GetActiveMuteFromCache(steamId);
+            var cachedMute = _muteManager.GetMuteFromCache(steamId);
             if (cachedMute != null && cachedMute.IsExpired)
             {
                 // Mute has expired - notify player and remove mute
                 player.SendChat($" \x04{PluginLocalizer.Get(_core)["prefix"]}\x01 {PluginLocalizer.Get(_core)["mute_expired"]}");
-                player.VoiceFlags = VoiceFlagValue.Normal;
+                PlayerUtils.ClearVoiceMute(_core, player);
                 _muteManager.ClearCache();
                 _muteWarnTimestamps.Remove(playerId);
                 _core.Logger.LogInformationIfEnabled("[CS2_Admin] Mute expired for player {SteamId}", steamId);
@@ -255,8 +255,22 @@ public class EventHandlers
                             return;
                         }
 
-                        mutedPlayer.VoiceFlags = VoiceFlagValue.Muted;
+                        PlayerUtils.ApplyVoiceMute(_core, mutedPlayer);
                         _core.Logger.LogInformationIfEnabled("[CS2_Admin] Applied mute to player {SteamId}", steamId);
+                    });
+                }
+
+                // Re-apply listen overrides for any muted players already online when this player connects
+                var activeMutedSteamIds = _muteManager.GetAllActiveMutedSteamIds();
+                if (activeMutedSteamIds.Count > 0)
+                {
+                    _core.Scheduler.NextTick(() =>
+                    {
+                        var newListener = _core.PlayerManager.GetPlayer(playerId);
+                        if (newListener?.IsValid == true)
+                        {
+                            PlayerUtils.ApplyVoiceMuteForNewListener(_core, newListener, activeMutedSteamIds);
+                        }
                     });
                 }
 
@@ -441,16 +455,42 @@ public class EventHandlers
             return;
         }
 
-        foreach (var player in _core.PlayerManager.GetAllPlayers().Where(p => p.IsValid && !p.IsFakeClient))
+        var allPlayers = _core.PlayerManager.GetAllPlayers().Where(p => p.IsValid && !p.IsFakeClient).ToList();
+        foreach (var mutedPlayer in allPlayers)
         {
-            var cachedMute = _muteManager.GetActiveMuteFromCache(player.SteamID);
+            var cachedMute = _muteManager.GetMuteFromCache(mutedPlayer.SteamID);
+            var mutedSlot = mutedPlayer.PlayerID;
+
             if (cachedMute != null && cachedMute.IsActive)
             {
-                if (player.VoiceFlags != VoiceFlagValue.Muted)
+                // Mute is active — ensure all listeners have the override set
+                foreach (var listener in allPlayers)
                 {
-                    player.VoiceFlags = VoiceFlagValue.Muted;
-                    _core.Logger.LogInformationIfEnabled("[CS2_Admin] Re-applied mute VoiceFlags to {SteamId}", player.SteamID);
+                    if (listener.PlayerID == mutedSlot)
+                        continue;
+
+                    if (listener.GetListenOverride(mutedSlot) != ListenOverride.Mute)
+                    {
+                        listener.SetListenOverride(mutedSlot, ListenOverride.Mute);
+                        _core.Logger.LogInformationIfEnabled("[CS2_Admin] Re-applied mute listen override for {SteamId}", mutedPlayer.SteamID);
+                    }
                 }
+            }
+            else if (cachedMute != null && cachedMute.IsExpired)
+            {
+                // Mute expired — clear all listener overrides so they can hear this player again
+                foreach (var listener in allPlayers)
+                {
+                    if (listener.PlayerID == mutedSlot)
+                        continue;
+
+                    if (listener.GetListenOverride(mutedSlot) == ListenOverride.Mute)
+                    {
+                        listener.SetListenOverride(mutedSlot, ListenOverride.Default);
+                    }
+                }
+                _muteManager.RemoveFromCache(mutedPlayer.SteamID);
+                _core.Logger.LogInformationIfEnabled("[CS2_Admin] Cleared expired mute listen overrides for {SteamId}", mutedPlayer.SteamID);
             }
         }
     }
@@ -696,7 +736,7 @@ public class EventHandlers
                 _muteWarnTimestamps[playerId] = DateTime.UtcNow;
             }
 
-            player.VoiceFlags = VoiceFlagValue.Muted;
+            PlayerUtils.ApplyVoiceMute(_core, player);
             return HookResult.Stop;
         }
 
@@ -712,9 +752,10 @@ public class EventHandlers
                     return;
                 }
 
-                current.VoiceFlags = mute != null && mute.IsActive
-                    ? VoiceFlagValue.Muted
-                    : VoiceFlagValue.Normal;
+                if (mute != null && mute.IsActive)
+                    PlayerUtils.ApplyVoiceMute(_core, current);
+                else
+                    PlayerUtils.ClearVoiceMute(_core, current);
             });
         });
 
