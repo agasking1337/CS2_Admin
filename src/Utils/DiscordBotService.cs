@@ -30,17 +30,20 @@ public class DiscordBotService
 
     private CancellationTokenSource? _serverStatusPublishCts;
     private CancellationTokenSource? _serverStatusUpdateCts;
+    private CancellationTokenSource? _verifyPanelCts;
     private PlayerSessionManager? _playerSessionManager;
     private DiscordServerStatusDbManager? _discordServerStatusDbManager;
     private DiscordMessageStateDbManager? _discordMessageStateDbManager;
     private WarnManager? _warnManager;
     private AdminLogManager? _adminLogManager;
+    private DiscordLinkDbManager? _discordLinkDbManager;
 
     private readonly DiscordRestClient _restClient;
     private readonly DiscordNotificationService _notificationService;
     private readonly DiscordServerStatusService _serverStatusService;
     private readonly DiscordInteractionHandler _interactionHandler;
     private readonly DiscordGatewayClient? _gatewayClient;
+    private readonly DiscordVerifyService _verifyService;
 
     public DiscordBotService(ISwiftlyCore core, DiscordFileConfig config, CommandsConfig? commandsConfig = null)
     {
@@ -70,6 +73,8 @@ public class DiscordBotService
             CommandAliasResolver.BuildSet(commandsConfig));
         _serverStatusService = new DiscordServerStatusService(_core, _restClient,
             _serverStatusChannelId, _bannerUrl, _customConnectUrl, _serverName);
+        _verifyService = new DiscordVerifyService(_core, _restClient, config);
+        _interactionHandler.SetVerifyService(_verifyService);
 
         _core.Logger.LogInformationIfEnabled(
             "[CS2_Admin][Debug][Discord] config botConfigured={BotConfigured} adminLogChannel={AdminLogChannel} chatChannel={ChatChannel} connectionChannel={ConnectionChannel} reportChannel={ReportChannel}",
@@ -80,11 +85,18 @@ public class DiscordBotService
             DiscordHelpers.MaskChannelId(_reportChannelId));
     }
 
-    public void SetDatabaseManagers(WarnManager warnManager, AdminLogManager adminLogManager)
+    public DiscordVerifyService Verify => _verifyService;
+
+    public void SetDatabaseManagers(WarnManager warnManager, AdminLogManager adminLogManager, DiscordLinkDbManager discordLinkDbManager)
     {
         _warnManager = warnManager;
         _adminLogManager = adminLogManager;
+        _discordLinkDbManager = discordLinkDbManager;
         _interactionHandler.SetDatabaseManagers(warnManager, adminLogManager);
+        if (_discordMessageStateDbManager != null)
+        {
+            _verifyService.SetDatabaseManagers(discordLinkDbManager, _discordMessageStateDbManager);
+        }
     }
 
     public void StartBackgroundUpdates(
@@ -105,12 +117,22 @@ public class DiscordBotService
 
         _serverStatusService.SetDatabaseManagers(discordServerStatusDbManager, discordMessageStateDbManager);
 
+        if (_discordLinkDbManager != null)
+        {
+            _verifyService.SetDatabaseManagers(_discordLinkDbManager, discordMessageStateDbManager);
+        }
+
         if (HasBotConfiguration() && !string.IsNullOrWhiteSpace(_serverStatusChannelId))
         {
             _serverStatusUpdateCts = _core.Scheduler.RepeatBySeconds(_serverStatusUpdateSeconds, () => _ = _serverStatusService.UpsertServerStatusMessageAsync());
             _ = _serverStatusService.UpsertServerStatusMessageAsync();
         }
 
+        _ = _verifyService.PublishVerifyPanelAsync();
+        if (_verifyService.IsEnabled)
+        {
+            _verifyPanelCts = _core.Scheduler.RepeatBySeconds(300, () => _ = _verifyService.PublishVerifyPanelAsync());
+        }
     }
 
     public void StopBackgroundUpdates()
@@ -122,6 +144,9 @@ public class DiscordBotService
 
         _serverStatusUpdateCts?.Cancel();
         _serverStatusUpdateCts = null;
+
+        _verifyPanelCts?.Cancel();
+        _verifyPanelCts = null;
     }
 
     public void EnsureGatewayConnection()

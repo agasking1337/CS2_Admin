@@ -7,6 +7,14 @@
     "Report": [
       "report"
     ],
+    "Verify": [
+      "verify",
+      "link"
+    ],
+    "Unverify": [
+      "unverify",
+      "unlink"
+    ],
     "AdminTime": [
       "admintime"
     ],

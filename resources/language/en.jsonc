@@ -527,5 +527,22 @@
   "mute_success": "{target} has been muted.",
   "unmute_success": "{target} has been unmuted.",
   "silence_success": "{target} has been silenced.",
-  "unsilence_success": "{target} has been unsilenced."
+  "unsilence_success": "{target} has been unsilenced.",
+  "verify_disabled": "Discord verification is disabled on this server.",
+  "verify_code": "Your verification code is {code}. Click 'Verify Account' in the Discord verify channel and enter it (expires in {minutes} min).",
+  "verify_already_linked": "Your account is already linked to Discord user {discord}. Use !unverify to unlink.",
+  "verify_not_linked": "Your account is not linked to a Discord account.",
+  "verify_unlinked": "Your Discord account has been unlinked.",
+  "verify_linked_ingame": "Your account has been linked to Discord user {discord}.",
+  "discord_verify_button": "Verify Account",
+  "discord_verify_modal_title": "Link your Steam account",
+  "discord_verify_modal_code_label": "In-game verification code",
+  "discord_verify_modal_code_placeholder": "e.g. A1B2C3",
+  "discord_verify_panel_title": "Link your Steam account",
+  "discord_verify_panel_description": "1. Join the server and type `!verify` in chat\n2. Click the button below\n3. Enter the code shown in-game\n\nYour Steam account will be linked to your Discord account.",
+  "discord_verify_success": "✅ Linked! SteamID `{steamid}` is now bound to your Discord account.",
+  "discord_verify_invalid_code": "❌ Invalid or expired code. Use `!verify` in-game to get a new one.",
+  "discord_verify_discord_already_linked": "❌ This Discord account is already linked to another Steam account. Contact an admin to unlink it.",
+  "discord_verify_disabled": "❌ Verification is currently disabled.",
+  "discord_verify_error": "❌ Something went wrong. Please try again."
 }

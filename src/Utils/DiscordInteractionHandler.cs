@@ -34,6 +34,7 @@ public class DiscordInteractionHandler
     private readonly string _botToken;
     private WarnManager? _warnManager;
     private AdminLogManager? _adminLogManager;
+    private DiscordVerifyService? _verifyService;
 
     public DiscordInteractionHandler(ISwiftlyCore core, DiscordRestClient restClient, string botToken)
     {
@@ -46,6 +47,11 @@ public class DiscordInteractionHandler
     {
         _warnManager = wm;
         _adminLogManager = alm;
+    }
+
+    public void SetVerifyService(DiscordVerifyService verifyService)
+    {
+        _verifyService = verifyService;
     }
 
     public async Task HandleInteractionAsync(JsonElement data)
@@ -71,13 +77,25 @@ public class DiscordInteractionHandler
             if (type == 3 && id != null && token != null && data.TryGetProperty("data", out var componentData))
             {
                 var customId = componentData.TryGetProperty("custom_id", out var customIdElement) ? customIdElement.GetString() : null;
-                if (customId != null && customId.StartsWith("report_resolve_"))
+                if (customId == "verify_open")
+                {
+                    await HandleVerifyOpenAsync(id, token);
+                }
+                else if (customId != null && customId.StartsWith("report_resolve_"))
                 {
                     await HandleReportResolveAsync(id, token, applicationId, data, customId);
                 }
                 else if (customId != null && customId.StartsWith("report_punish_"))
                 {
                     await HandleReportPunishAsync(id, token, applicationId, data, customId);
+                }
+            }
+            else if (type == 5 && id != null && token != null && data.TryGetProperty("data", out var modalData))
+            {
+                var modalCustomId = modalData.TryGetProperty("custom_id", out var modalCustomIdElement) ? modalCustomIdElement.GetString() : null;
+                if (modalCustomId == "verify_modal")
+                {
+                    await HandleVerifyModalSubmitAsync(id, token, data);
                 }
             }
         }
@@ -220,6 +238,150 @@ public class DiscordInteractionHandler
             _core.Logger.LogWarningIfEnabled("[CS2_Admin] Error in punish interaction: {Message}", ex.Message);
             await EditOriginalResponseAsync(applicationId, interactionToken, BuildEditErrorPayload(T("discord_report_punishments_internal_error", "An internal error occurred while loading punishments.")));
         }
+    }
+
+    private async Task HandleVerifyOpenAsync(string interactionId, string interactionToken)
+    {
+        if (_verifyService == null || !_verifyService.IsEnabled)
+        {
+            await SendErrorAsync(interactionId, interactionToken, T("discord_verify_disabled", "Verification is currently disabled."));
+            return;
+        }
+
+        var modal = new
+        {
+            title = T("discord_verify_modal_title", "Link your Steam account"),
+            custom_id = "verify_modal",
+            components = new object[]
+            {
+                new
+                {
+                    type = 1,
+                    components = new object[]
+                    {
+                        new
+                        {
+                            type = 4,
+                            custom_id = "verify_code",
+                            label = T("discord_verify_modal_code_label", "In-game verification code"),
+                            style = 1,
+                            min_length = 4,
+                            max_length = 12,
+                            required = true,
+                            placeholder = T("discord_verify_modal_code_placeholder", "e.g. A1B2C3")
+                        }
+                    }
+                }
+            }
+        };
+
+        if (!await _restClient.RespondToInteractionAsync(interactionId, interactionToken, 9, modal))
+        {
+            _core.Logger.LogWarningIfEnabled("[CS2_Admin] Discord verify modal response failed");
+        }
+    }
+
+    private async Task HandleVerifyModalSubmitAsync(string interactionId, string interactionToken, JsonElement data)
+    {
+        try
+        {
+            if (_verifyService == null)
+            {
+                await SendErrorAsync(interactionId, interactionToken, T("discord_verify_disabled", "Verification is currently disabled."));
+                return;
+            }
+
+            var user = GetInteractionUser(data);
+            if (user == null || !ulong.TryParse(user.Value.UserId, out var discordId))
+            {
+                await SendErrorAsync(interactionId, interactionToken, T("discord_verify_error", "Something went wrong. Please try again."));
+                return;
+            }
+
+            var guildId = data.TryGetProperty("guild_id", out var guildIdElement) && guildIdElement.ValueKind == JsonValueKind.String
+                ? guildIdElement.GetString()
+                : null;
+
+            var code = ExtractModalInputValue(data, "verify_code");
+            var outcome = await _verifyService.CompleteVerificationAsync(code, discordId, user.Value.DisplayName, guildId);
+
+            var message = outcome.Result switch
+            {
+                DiscordVerifyResult.Success => T("discord_verify_success", "✅ Linked! SteamID `{steamid}` is now bound to your Discord account.", outcome.SteamId),
+                DiscordVerifyResult.DiscordAlreadyLinked => T("discord_verify_discord_already_linked", "❌ This Discord account is already linked to another Steam account. Contact an admin to unlink it."),
+                DiscordVerifyResult.Disabled => T("discord_verify_disabled", "Verification is currently disabled."),
+                DiscordVerifyResult.DbError => T("discord_verify_error", "Something went wrong. Please try again."),
+                _ => T("discord_verify_invalid_code", "❌ Invalid or expired code. Use `!verify` in-game to get a new one.")
+            };
+
+            await _restClient.RespondToInteractionAsync(interactionId, interactionToken, 4, new { content = message, flags = 64 });
+        }
+        catch (Exception ex)
+        {
+            _core.Logger.LogWarningIfEnabled("[CS2_Admin] Error in verify modal submit: {Message}", ex.Message);
+            await SendErrorAsync(interactionId, interactionToken, T("discord_verify_error", "Something went wrong. Please try again."));
+        }
+    }
+
+    private static (string UserId, string DisplayName)? GetInteractionUser(JsonElement data)
+    {
+        JsonElement user;
+        if (data.TryGetProperty("member", out var member) && member.TryGetProperty("user", out var memberUser))
+        {
+            user = memberUser;
+        }
+        else if (data.TryGetProperty("user", out var directUser))
+        {
+            user = directUser;
+        }
+        else
+        {
+            return null;
+        }
+
+        var userId = user.TryGetProperty("id", out var idElement) ? idElement.GetString() : null;
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return null;
+        }
+
+        var displayName = user.TryGetProperty("global_name", out var globalNameElement)
+            && globalNameElement.ValueKind == JsonValueKind.String
+            && !string.IsNullOrWhiteSpace(globalNameElement.GetString())
+                ? globalNameElement.GetString()!
+                : user.TryGetProperty("username", out var usernameElement) ? usernameElement.GetString() ?? userId : userId;
+
+        return (userId, displayName);
+    }
+
+    private static string? ExtractModalInputValue(JsonElement data, string inputCustomId)
+    {
+        if (!data.TryGetProperty("data", out var modalData)
+            || !modalData.TryGetProperty("components", out var rows)
+            || rows.ValueKind != JsonValueKind.Array)
+        {
+            return null;
+        }
+
+        foreach (var row in rows.EnumerateArray())
+        {
+            if (!row.TryGetProperty("components", out var inputs) || inputs.ValueKind != JsonValueKind.Array)
+            {
+                continue;
+            }
+
+            foreach (var input in inputs.EnumerateArray())
+            {
+                if (input.TryGetProperty("custom_id", out var customIdElement)
+                    && string.Equals(customIdElement.GetString(), inputCustomId, StringComparison.Ordinal)
+                    && input.TryGetProperty("value", out var valueElement))
+                {
+                    return valueElement.GetString();
+                }
+            }
+        }
+
+        return null;
     }
 
     private async Task SendErrorAsync(string interactionId, string interactionToken, string message)

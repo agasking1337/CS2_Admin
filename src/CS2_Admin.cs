@@ -48,6 +48,7 @@ public partial class CS2_Admin : BasePlugin
     private ServerInfoDbManager _serverInfoDbManager = null!;
     private DiscordServerStatusDbManager _discordServerStatusDbManager = null!;
     private DiscordMessageStateDbManager _discordMessageStateDbManager = null!;
+    private DiscordLinkDbManager _discordLinkDbManager = null!;
     private readonly ConcurrentDictionary<int, (ulong SteamId, string Name, string Ip)> _connectedPlayersCache = new();
     private AdminPlaytimeDbManager _adminPlaytimeDbManager = null!;
     private PlayerIpDbManager _playerIpDbManager = null!;
@@ -62,6 +63,8 @@ public partial class CS2_Admin : BasePlugin
     private HsayCommand _hsayCmd = null!;
     private CallAdminCommand _callAdminCmd = null!;
     private ReportCommand _reportCmd = null!;
+    private VerifyCommand _verifyCmd = null!;
+    private UnverifyCommand _unverifyCmd = null!;
     private AdminTimeCommand _adminTimeCmd = null!;
     private AdminTimeSendCommand _adminTimeSendCmd = null!;
     private BanCommand _banCmd = null!;
@@ -376,7 +379,8 @@ public partial class CS2_Admin : BasePlugin
         _tagDbManager = new TagDbManager(Core);
         _adminDbManager = new AdminDbManager(Core, _groupDbManager);
         _adminLogManager = new AdminLogManager(Core);
-        _discord.SetDatabaseManagers(_warnManager, _adminLogManager);
+        _discordLinkDbManager = new DiscordLinkDbManager(Core);
+        _discord.SetDatabaseManagers(_warnManager, _adminLogManager, _discordLinkDbManager);
         _serverInfoDbManager = new ServerInfoDbManager(Core);
         _discordServerStatusDbManager = new DiscordServerStatusDbManager(Core);
         _discordMessageStateDbManager = new DiscordMessageStateDbManager(Core);
@@ -445,6 +449,8 @@ public partial class CS2_Admin : BasePlugin
         // DiscordBotService only
         _callAdminCmd = new CallAdminCommand(Core, _config.Permissions, _config.Commands, _config.Tags, _config.Messages, _adminLogManager, ps, _discord);
         _reportCmd = new ReportCommand(Core, _config.Permissions, _config.Commands, _config.Tags, _config.Messages, _adminLogManager, ps, _discord, _config.Sanctions);
+        _verifyCmd = new VerifyCommand(Core, _config.Permissions, _config.Commands, _config.Tags, _config.Messages, _adminLogManager, ps, _discord);
+        _unverifyCmd = new UnverifyCommand(Core, _config.Permissions, _config.Commands, _config.Tags, _config.Messages, _adminLogManager, ps, _discord);
 
         // AdminDbManager + GroupDbManager
         _listGroupsCmd = new ListGroupsCommand(Core, _config.Permissions, _config.Commands, _config.Tags, _config.Messages, _adminLogManager, ps, _adminDbManager, _groupDbManager);
@@ -722,6 +728,7 @@ public partial class CS2_Admin : BasePlugin
                 await _serverInfoDbManager.InitializeAsync();
                 await _discordServerStatusDbManager.InitializeAsync();
                 await _discordMessageStateDbManager.InitializeAsync();
+                await _discordLinkDbManager.InitializeAsync();
                 await _adminPlaytimeDbManager.InitializeAsync();
                 await _playerIpDbManager.InitializeAsync();
                 await _playerSessionManager.InitializeAsync();

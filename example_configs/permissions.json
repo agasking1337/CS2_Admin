@@ -10,6 +10,8 @@
     "Hsay": "admin.generic",
     "CallAdmin": "admin.generic",
     "Report": "",
+    "Verify": "",
+    "Unverify": "",
     "AdminTime": "admin.generic",
     "AdminTimeSend": "admin.root",
     "AdminReload": "admin.root",

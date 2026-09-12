@@ -141,6 +141,40 @@ public class DiscordRestClient
         return false;
     }
 
+    public async Task<bool> AddGuildMemberRoleAsync(string guildId, string userId, string roleId)
+    {
+        return await SendGuildMemberRoleRequestAsync(HttpMethod.Put, guildId, userId, roleId);
+    }
+
+    public async Task<bool> RemoveGuildMemberRoleAsync(string guildId, string userId, string roleId)
+    {
+        return await SendGuildMemberRoleRequestAsync(HttpMethod.Delete, guildId, userId, roleId);
+    }
+
+    private async Task<bool> SendGuildMemberRoleRequestAsync(HttpMethod method, string guildId, string userId, string roleId)
+    {
+        if (!HasBotConfiguration() || string.IsNullOrWhiteSpace(guildId) || string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(roleId))
+        {
+            return false;
+        }
+
+        var endpoint = $"{DiscordApiBaseUrl}/guilds/{guildId}/members/{userId}/roles/{roleId}";
+        using var request = new HttpRequestMessage(method, endpoint);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bot", _botToken);
+        if (method == HttpMethod.Put)
+        {
+            request.Content = new StringContent("{}", Encoding.UTF8, "application/json");
+        }
+        using var response = await _httpClient.SendAsync(request);
+        if (response.IsSuccessStatusCode)
+        {
+            return true;
+        }
+
+        await LogDiscordFailureAsync("update member role", response);
+        return false;
+    }
+
     public async Task<bool> DeleteMessageAsync(string channelId, string messageId)
     {
         if (!HasBotConfiguration() || string.IsNullOrWhiteSpace(channelId) || string.IsNullOrWhiteSpace(messageId))

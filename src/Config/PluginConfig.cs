@@ -153,7 +153,7 @@ public class MessagesConfig
 
 public class DiscordFileConfig
 {
-    public const int CurrentVersion = 10;
+    public const int CurrentVersion = 11;
     public int Version { get; set; } = CurrentVersion;
     public string ServerName { get; set; } = "";
     public string BotToken { get; set; } = "";
@@ -168,6 +168,11 @@ public class DiscordFileConfig
     public string AdminTimeChannelId { get; set; } = "";
     public string ServerStatusChannelId { get; set; } = "";
     public int ServerStatusUpdateSeconds { get; set; } = 30;
+    public bool VerifyEnabled { get; set; } = false;
+    public string VerifyChannelId { get; set; } = "";
+    public string GuildId { get; set; } = "";
+    public string VerifiedRoleId { get; set; } = "";
+    public int VerifyCodeExpiryMinutes { get; set; } = 10;
 }
 
 public class AfkFileConfig
@@ -183,7 +188,7 @@ public class AfkFileConfig
 
 public class CommandsConfig
 {
-    public const int CurrentVersion = 10;
+    public const int CurrentVersion = 11;
     public int Version { get; set; } = CurrentVersion;
     [JsonIgnore]
     public List<string> AdminMenu { get; set; } = ["admin"];
@@ -201,6 +206,8 @@ public class CommandsConfig
     public List<string> Hsay { get; set; } = ["hsay"];
     public List<string> CallAdmin { get; set; } = ["calladmin"];
     public List<string> Report { get; set; } = ["report"];
+    public List<string> Verify { get; set; } = ["verify", "link"];
+    public List<string> Unverify { get; set; } = ["unverify", "unlink"];
     public List<string> AdminTime { get; set; } = ["admintime"];
     public List<string> AdminTimeSend { get; set; } = ["admintimesend"];
     public List<string> Afk { get; set; } = ["afk"];
@@ -328,7 +335,7 @@ public class CommandsConfig
 
 public class PermissionsConfig
 {
-    public const int CurrentVersion = 10;
+    public const int CurrentVersion = 11;
     public int Version { get; set; } = CurrentVersion;
     public string AdminMenu { get; set; } = "admin.generic";
     public string AdminRoot { get; set; } = "admin.root";
@@ -339,6 +346,8 @@ public class PermissionsConfig
     public string Hsay { get; set; } = "admin.generic";
     public string CallAdmin { get; set; } = "admin.generic";
     public string Report { get; set; } = "";
+    public string Verify { get; set; } = "";
+    public string Unverify { get; set; } = "";
     public string AdminTime { get; set; } = "admin.generic";
     public string AdminTimeSend { get; set; } = "admin.root";
     public string AdminReload { get; set; } = "admin.root";

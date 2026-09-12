@@ -78,6 +78,7 @@ CS2_Admin's Discord integration is far beyond a simple webhook logger:
 - **Connection Logs**: Track player connects and disconnects.
 - **Live Server Status**: A self-updating embed message in your Discord that shows your server's current map, player count, IP address, online/offline status, and a quick-connect command — all updated every 30 seconds.
 - **Leaderboard**: Automatically publishes a top-players leaderboard to Discord at a configurable interval.
+- **Account Verification**: Players link their Steam account to their Discord user via `!verify` (in-game code) + a button/modal panel in your verify channel. Optionally grants a "Verified" role. Links are stored in the `admin_discord_links` table.
 - **Custom Banners**: Add your own server banner image to the status embed for a professional look.
 
 ### 🔁 Auto-Updater
@@ -186,7 +187,7 @@ Defines which Swiftly permissions are mapped to each plugin feature and command.
 [View Example permissions.json](example_configs/permissions.json)
 
 ### `discord.json`
-Manages Discord bot token, channel IDs for logging, server status, reports, leaderboards, and banner configuration.
+Manages Discord bot token, channel IDs for logging, server status, reports, leaderboards, banner configuration, and account verification (`VerifyEnabled`, `VerifyChannelId`, `GuildId`, `VerifiedRoleId`).
 [View Example discord.json](example_configs/discord.json)
 
 ### `tags.json`
@@ -214,6 +215,8 @@ CS2_Admin natively ties into Swiftly's permission system. Below are all the comm
 | `!say <message>` | `admin.generic` | Sends an admin chat message to all players |
 | `!report [target]` | `@All` | Opens a player selection menu to report a player, or sends a direct report with a message |
 | `!calladmin <reason>` | `@All` | Sends a help request message directly to the Discord CallAdmin channel |
+| `!verify` | `@All` | Generates a code to link your Steam account to Discord via the verify panel |
+| `!unverify` | `@All` | Removes your Steam ↔ Discord account link |
 | `!afk` | `@All` | Marks yourself as AFK or checks AFK status |
 | `!admintime` | `admin.generic` | Checks your own admin playtime |
 | `!admintimesend` | `admin.root` | Broadcasts top admin playtimes |

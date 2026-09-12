@@ -60,6 +60,8 @@ public partial class CS2_Admin
         RegisterCmdList(["hsay"], _hsayCmd.Execute);
         RegisterCmdList(["calladmin"], _callAdminCmd.Execute);
         RegisterCmdList(["report"], _reportCmd.Execute);
+        RegisterCmdList(["verify", "link"], _verifyCmd.Execute);
+        RegisterCmdList(["unverify", "unlink"], _unverifyCmd.Execute);
         RegisterCmdList(["admintime"], _adminTimeCmd.Execute);
         RegisterCmdList(["admintimesend"], _adminTimeSendCmd.Execute);
         RegisterCmdList(["ban"], _banCmd.Execute);
