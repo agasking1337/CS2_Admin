@@ -172,6 +172,50 @@ public class PlayerIpDbManager
         }
     }
 
+    public async Task<IReadOnlyList<PlayerIpAccountLink>> FindAccountsByIpAsync(string? ipAddress, ulong excludeSteamId, int maxResults = 8)
+    {
+        var normalizedIp = NormalizeIpAddress(ipAddress);
+        if (string.IsNullOrWhiteSpace(normalizedIp))
+        {
+            return [];
+        }
+
+        try
+        {
+            using var connection = _core.Database.GetConnection("mysql_detailed");
+            var rows = await connection.QueryAsync<PlayerIpAccountLink>(
+                """
+                SELECT `steamid` AS `SteamId`, MAX(`player_name`) AS `PlayerName`, MAX(`seen_at`) AS `LastSeenAt`
+                FROM (
+                    SELECT `steamid`, `player_name`, `last_seen_at` AS `seen_at`
+                    FROM `admin_player_ip_history`
+                    WHERE `ip_address` = @IpAddress
+                    UNION ALL
+                    SELECT `steamid`, `player_name`, `updated_at` AS `seen_at`
+                    FROM `admin_player_sessions`
+                    WHERE `last_ip` = @IpAddress
+                ) AS `seen`
+                WHERE `steamid` <> @ExcludeSteamId
+                GROUP BY `steamid`
+                ORDER BY `LastSeenAt` DESC
+                LIMIT @MaxResults
+                """,
+                new
+                {
+                    IpAddress = normalizedIp,
+                    ExcludeSteamId = Convert.ToInt64(excludeSteamId),
+                    MaxResults = Math.Max(1, maxResults)
+                });
+
+            return rows.ToList();
+        }
+        catch (Exception ex)
+        {
+            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error finding accounts by ip: {Message}", ex.Message);
+            return [];
+        }
+    }
+
     private static string? NormalizeIpAddress(string? ipAddress)
     {
         if (string.IsNullOrWhiteSpace(ipAddress))
@@ -188,6 +232,13 @@ public class PlayerIpDbManager
 
         return normalized;
     }
+}
+
+public sealed class PlayerIpAccountLink
+{
+    public ulong SteamId { get; set; }
+    public string PlayerName { get; set; } = string.Empty;
+    public DateTime LastSeenAt { get; set; }
 }
 
 

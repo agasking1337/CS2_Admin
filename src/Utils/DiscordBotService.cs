@@ -3,6 +3,7 @@ using System.Text.Json;
 using CS2_Admin.Config;
 using CS2_Admin.Database;
 using CS2_Admin.Models;
+using CS2_Admin.Services;
 using Microsoft.Extensions.Logging;
 using SwiftlyS2.Shared;
 using SwiftlyS2.Shared.Players;
@@ -237,6 +238,11 @@ public class DiscordBotService
     public async Task SendAdminActionNotificationAsync(string action, string adminName, ulong adminSteamId, ulong? targetSteamId, string? details, string serverId, string? targetName = null)
     {
         await _notificationService.SendAdminActionNotificationAsync(action, adminName, adminSteamId, targetSteamId, details, serverId, targetName);
+    }
+
+    public async Task SendAltAccountAlertAsync(string? playerName, ulong steamId, string? ipAddress, AltAccountReport report)
+    {
+        await _notificationService.SendAltAccountAlertAsync(playerName, steamId, ipAddress, report);
     }
 
     private bool HasBotConfiguration()

@@ -54,6 +54,7 @@ public partial class CS2_Admin : BasePlugin
     private PlayerIpDbManager _playerIpDbManager = null!;
     private PlayerSessionManager _playerSessionManager = null!;
     private PlayerNameHistoryManager _playerNameHistoryManager = null!;
+    private AltAccountDetectionService _altAccountDetection = null!;
 
     private AdminMenuCommand _adminMenuCmd = null!;
     private AsayCommand _asayCmd = null!;
@@ -390,6 +391,7 @@ public partial class CS2_Admin : BasePlugin
         _playerNameHistoryManager = new PlayerNameHistoryManager(Core);
         _recentPlayersTracker = new RecentPlayersTracker();
         _sanctionStateService = new PlayerSanctionStateService(_banManager, _muteManager, _gagManager, _warnManager, _config.MultiServer);
+        _altAccountDetection = new AltAccountDetectionService(Core, _playerIpDbManager);
         _afkManager = new AfkManagerService(Core, _config.Afk, _config.Permissions, _config.Messages);
     }
 
@@ -523,6 +525,9 @@ public partial class CS2_Admin : BasePlugin
                     int activePlayers = Core.PlayerManager.GetAllPlayers().Count(p => p.IsValid && !p.IsFakeClient);
                     if (_discord != null)
                         _ = _discord.SendConnectNotificationAsync(player.Controller.PlayerName, player.SteamID, player.IPAddress, activePlayers);
+
+                    _ = _playerIpDbManager.UpsertPlayerIpAsync(player.SteamID, player.Controller.PlayerName, player.IPAddress);
+                    _ = RunAltAccountCheckAsync(player.SteamID, player.Controller.PlayerName, player.IPAddress);
     
                     _ = Task.Run(async () =>
                     {
@@ -672,6 +677,78 @@ public partial class CS2_Admin : BasePlugin
         catch (Exception ex)
         {
             Core.Logger.LogWarningIfEnabled("[CS2_Admin] Failed to reapply voice mute on connect for {SteamId}: {Msg}", steamId, ex.Message);
+        }
+    }
+
+    private async Task RunAltAccountCheckAsync(ulong steamId, string? playerName, string? ipAddress)
+    {
+        try
+        {
+            var report = await _altAccountDetection.CheckAsync(steamId, ipAddress);
+            if (report == null || report.IsEmpty)
+            {
+                return;
+            }
+
+            if (_discord != null)
+            {
+                _ = _discord.SendAltAccountAlertAsync(playerName, steamId, ipAddress, report);
+            }
+
+            var displayName = string.IsNullOrWhiteSpace(playerName) ? steamId.ToString() : playerName;
+            string chatMessage;
+            if (report.Matches.Count > 0)
+            {
+                var linkedNames = report.Matches
+                    .Take(3)
+                    .Select(m => string.IsNullOrWhiteSpace(m.Account.PlayerName) ? m.Account.SteamId.ToString() : m.Account.PlayerName)
+                    .ToList();
+                var namesText = string.Join(", ", linkedNames);
+                var extraCount = report.Matches.Count - linkedNames.Count;
+                if (extraCount > 0)
+                {
+                    namesText += $" (+{extraCount})";
+                }
+
+                chatMessage = LocalizerHelper.GetWithFallback(
+                    Core,
+                    "alt_alert_admin_chat",
+                    "Possible alt account: {0} shares an IP with sanctioned account(s): {1}",
+                    displayName,
+                    namesText);
+            }
+            else
+            {
+                chatMessage = LocalizerHelper.GetWithFallback(
+                    Core,
+                    "alt_alert_admin_chat_ipban",
+                    "Possible ban evasion: {0} connected from an IP with {1} ban(s) on record.",
+                    displayName,
+                    report.IpBans.Count);
+            }
+            var prefix = PluginLocalizer.Get(Core)["prefix"];
+            var formatted = $" \x02{prefix}\x01 {chatMessage}";
+
+            Core.Scheduler.NextTick(() =>
+            {
+                foreach (var p in Core.PlayerManager.GetAllPlayers().Where(p => p.IsValid && !p.IsFakeClient))
+                {
+                    if (p.SteamID == steamId)
+                    {
+                        continue;
+                    }
+
+                    if (Core.Permission.PlayerHasPermission(p.SteamID, _config.Permissions.AdminRoot)
+                        || Core.Permission.PlayerHasPermission(p.SteamID, _config.Permissions.Ban))
+                    {
+                        p.SendChat(formatted);
+                    }
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            Core.Logger.LogWarningIfEnabled("[CS2_Admin] Alt account check failed for {SteamId}: {Message}", steamId, ex.Message);
         }
     }
 

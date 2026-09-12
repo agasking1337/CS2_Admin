@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using CS2_Admin.Models;
+using CS2_Admin.Services;
 using Microsoft.Extensions.Logging;
 using SwiftlyS2.Shared;
 using SwiftlyS2.Shared.Players;
@@ -565,6 +566,128 @@ public class DiscordNotificationService
         {
             _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error sending admin action notification: {Message}", ex.Message);
         }
+    }
+
+    public async Task SendAltAccountAlertAsync(string? playerName, ulong steamId, string? ipAddress, AltAccountReport report)
+    {
+        var channelId = ResolveChannelId(_defaultChannelId);
+        if (string.IsNullOrEmpty(channelId) || report.IsEmpty)
+        {
+            return;
+        }
+
+        try
+        {
+            var snapshot = await BuildPlayerSnapshotAsync(playerName, steamId, ipAddress, includeGeoLookup: true);
+
+            var fields = new List<object>();
+            foreach (var match in report.Matches.Take(5))
+            {
+                var lines = new List<string>();
+                foreach (var sanction in match.Sanctions.Take(6))
+                {
+                    var statusLabel = sanction.IsActive
+                        ? T("discord_alt_alert_status_active", "ACTIVE")
+                        : T("discord_alt_alert_status_ended", "ended");
+                    var expiry = sanction.ExpiresAt.HasValue
+                        ? sanction.ExpiresAt.Value.ToString("yyyy-MM-dd")
+                        : T("discord_permanent", "Permanent");
+                    lines.Add($"• {FormatSanctionType(sanction.Type)} — {DiscordHelpers.EscapeMarkdown(TruncateForEmbed(sanction.Reason, 80))} `{statusLabel}` `{expiry}`");
+                }
+                lines.Add(T("discord_alt_alert_last_seen", "IP last seen: `{0} UTC`", match.Account.LastSeenAt.ToString("yyyy-MM-dd HH:mm")));
+
+                var linkedName = string.IsNullOrWhiteSpace(match.Account.PlayerName)
+                    ? match.Account.SteamId.ToString()
+                    : match.Account.PlayerName;
+                fields.Add(new
+                {
+                    name = T("discord_alt_alert_linked_field", "Linked account: {0} (`{1}`)", DiscordHelpers.EscapeMarkdown(linkedName), match.Account.SteamId),
+                    value = string.Join("\n", lines),
+                    inline = false
+                });
+            }
+
+            if (report.IpBans.Count > 0)
+            {
+                var ipBanLines = report.IpBans.Take(3).Select(ban =>
+                {
+                    var statusLabel = ban.IsActive
+                        ? T("discord_alt_alert_status_active", "ACTIVE")
+                        : T("discord_alt_alert_status_ended", "ended");
+                    var who = string.IsNullOrWhiteSpace(ban.TargetName)
+                        ? (ban.SteamId > 0 ? ban.SteamId.ToString() : "-")
+                        : ban.TargetName;
+                    return $"• {DiscordHelpers.EscapeMarkdown(who)} — {DiscordHelpers.EscapeMarkdown(TruncateForEmbed(ban.Reason, 80))} `{statusLabel}`";
+                });
+                fields.Add(new
+                {
+                    name = T("discord_alt_alert_ip_bans_field", "IP-targeted bans on this address"),
+                    value = string.Join("\n", ipBanLines),
+                    inline = false
+                });
+            }
+
+            var color = report.Severity switch
+            {
+                AltAlertSeverity.High => 15158332,
+                AltAlertSeverity.Medium => 15105570,
+                _ => 16763904
+            };
+
+            var playerLink = $"[{DiscordHelpers.EscapeMarkdown(snapshot.DisplayName)}]({DiscordHelpers.BuildSteamProfileUrl(snapshot.SteamId)})";
+            var embed = new
+            {
+                title = $"⚠️ {T("discord_alt_alert_title", "Possible alt account connected")}",
+                url = DiscordHelpers.BuildSteamProfileUrl(snapshot.SteamId),
+                description = T(
+                    "discord_alt_alert_description",
+                    "**New connection:** {0}\n**SteamID:** `{1}`\n**IP:** ||{2}|| {3} {4}",
+                    playerLink,
+                    snapshot.SteamId,
+                    snapshot.IpAddress,
+                    DiscordHelpers.CountryCodeToDiscordFlag(snapshot.CountryCode),
+                    snapshot.CountryName),
+                color,
+                fields = fields.ToArray(),
+                footer = new
+                {
+                    text = T(
+                        "discord_alt_alert_footer",
+                        "CS2_Admin | Alt Detection | {0} | {1} UTC",
+                        GetServerLabel(),
+                        DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"))
+                },
+                timestamp = DateTime.UtcNow.ToString("o")
+            };
+
+            await _restClient.SendEmbedAsync(channelId, embed);
+        }
+        catch (Exception ex)
+        {
+            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error sending alt account alert: {Message}", ex.Message);
+        }
+    }
+
+    private static string FormatSanctionType(string type)
+    {
+        return type.ToLowerInvariant() switch
+        {
+            "ban" => "🔨 Ban",
+            "mute" => "🔇 Mute",
+            "gag" => "🚫 Gag",
+            "warn" => "⚠️ Warn",
+            _ => type
+        };
+    }
+
+    private static string TruncateForEmbed(string? value, int maxLength)
+    {
+        if (string.IsNullOrEmpty(value) || value.Length <= maxLength)
+        {
+            return value ?? string.Empty;
+        }
+
+        return value[..(maxLength - 1)] + "…";
     }
 
     private string T(string key, string fallback, params object[] args)
