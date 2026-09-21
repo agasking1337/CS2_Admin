@@ -175,6 +175,124 @@ public class DiscordRestClient
         return false;
     }
 
+    public async Task<string?> CreateGuildChannelAsync(string guildId, object payload)
+    {
+        if (!HasBotConfiguration() || string.IsNullOrWhiteSpace(guildId))
+        {
+            return null;
+        }
+
+        var endpoint = $"{DiscordApiBaseUrl}/guilds/{guildId}/channels";
+        using var request = BuildDiscordRequest(HttpMethod.Post, endpoint, payload);
+        using var response = await _httpClient.SendAsync(request);
+        if (!response.IsSuccessStatusCode)
+        {
+            await LogDiscordFailureAsync("create channel", response);
+            return null;
+        }
+
+        var json = await response.Content.ReadAsStringAsync();
+        using var document = JsonDocument.Parse(json);
+        return document.RootElement.TryGetProperty("id", out var idElement)
+            ? idElement.GetString()
+            : null;
+    }
+
+    public async Task<List<DiscordGuildChannel>?> GetGuildChannelsAsync(string guildId)
+    {
+        if (!HasBotConfiguration() || string.IsNullOrWhiteSpace(guildId))
+        {
+            return null;
+        }
+
+        var endpoint = $"{DiscordApiBaseUrl}/guilds/{guildId}/channels";
+        using var request = new HttpRequestMessage(HttpMethod.Get, endpoint);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bot", _botToken);
+        using var response = await _httpClient.SendAsync(request);
+        if (!response.IsSuccessStatusCode)
+        {
+            await LogDiscordFailureAsync("fetch guild channels", response);
+            return null;
+        }
+
+        var json = await response.Content.ReadAsStringAsync();
+        using var document = JsonDocument.Parse(json);
+        var channels = new List<DiscordGuildChannel>();
+        foreach (var element in document.RootElement.EnumerateArray())
+        {
+            var id = element.TryGetProperty("id", out var idElement) ? idElement.GetString() : null;
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                continue;
+            }
+
+            channels.Add(new DiscordGuildChannel
+            {
+                Id = id,
+                Name = element.TryGetProperty("name", out var nameElement) ? nameElement.GetString() : null,
+                Type = element.TryGetProperty("type", out var typeElement) && typeElement.TryGetInt32(out var type) ? type : 0,
+                ParentId = element.TryGetProperty("parent_id", out var parentElement) ? parentElement.GetString() : null
+            });
+        }
+
+        return channels;
+    }
+
+    public async Task<DiscordChannelUpdateResult> UpdateChannelNameAsync(string channelId, string name)
+    {
+        if (!HasBotConfiguration() || string.IsNullOrWhiteSpace(channelId) || string.IsNullOrWhiteSpace(name))
+        {
+            return new DiscordChannelUpdateResult(DiscordChannelUpdateStatus.Error, 0);
+        }
+
+        var endpoint = $"{DiscordApiBaseUrl}/channels/{channelId}";
+        using var request = BuildDiscordRequest(HttpMethod.Patch, endpoint, new { name });
+        using var response = await _httpClient.SendAsync(request);
+        if (response.IsSuccessStatusCode)
+        {
+            return new DiscordChannelUpdateResult(DiscordChannelUpdateStatus.Success, 0);
+        }
+
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return new DiscordChannelUpdateResult(DiscordChannelUpdateStatus.NotFound, 0);
+        }
+
+        if ((int)response.StatusCode == 429)
+        {
+            return new DiscordChannelUpdateResult(DiscordChannelUpdateStatus.RateLimited,
+                await ReadRetryAfterSecondsAsync(response));
+        }
+
+        await LogDiscordFailureAsync("update channel", response);
+        return new DiscordChannelUpdateResult(DiscordChannelUpdateStatus.Error, 0);
+    }
+
+    private static async Task<double> ReadRetryAfterSecondsAsync(HttpResponseMessage response)
+    {
+        try
+        {
+            var json = await response.Content.ReadAsStringAsync();
+            using var document = JsonDocument.Parse(json);
+            if (document.RootElement.TryGetProperty("retry_after", out var retryAfterElement)
+                && retryAfterElement.TryGetDouble(out var retryAfterSeconds)
+                && retryAfterSeconds > 0)
+            {
+                return retryAfterSeconds;
+            }
+        }
+        catch
+        {
+        }
+
+        if (response.Headers.RetryAfter?.Delta is TimeSpan delta && delta > TimeSpan.Zero)
+        {
+            return delta.TotalSeconds;
+        }
+
+        return 60;
+    }
+
     public async Task<bool> DeleteMessageAsync(string channelId, string messageId)
     {
         if (!HasBotConfiguration() || string.IsNullOrWhiteSpace(channelId) || string.IsNullOrWhiteSpace(messageId))
@@ -297,6 +415,15 @@ public class DiscordRestClient
         {
             return;
         }
+
+        if (!string.IsNullOrWhiteSpace(body) && body.Contains("\"code\": 10004"))
+        {
+            _core.Logger.LogWarningIfEnabled(
+                "[CS2_Admin] Discord bot {Action} failed: Unknown Guild. GuildId must be the server ID (right-click server name > Copy Server ID), not a channel ID.",
+                action);
+            return;
+        }
+
         _core.Logger.LogWarningIfEnabled(
             "[CS2_Admin] Discord bot {Action} failed with status {StatusCode}. Response: {Body}",
             action,
@@ -343,4 +470,22 @@ public class DiscordRestClient
     {
         public string? Id { get; set; }
     }
+}
+
+public enum DiscordChannelUpdateStatus
+{
+    Success,
+    NotFound,
+    RateLimited,
+    Error
+}
+
+public readonly record struct DiscordChannelUpdateResult(DiscordChannelUpdateStatus Status, double RetryAfterSeconds);
+
+public sealed class DiscordGuildChannel
+{
+    public string Id { get; set; } = string.Empty;
+    public string? Name { get; set; }
+    public int Type { get; set; }
+    public string? ParentId { get; set; }
 }

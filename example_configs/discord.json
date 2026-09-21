@@ -1,6 +1,6 @@
 {
   "CS2_Discord": {
-    "Version": 11,
+    "Version": 12,
     "ServerName": "",
     "BotToken": "",
     "ServerPublicIp": "",
@@ -15,6 +15,7 @@
     "ServerStatusChannelId": "",
     "LeaderboardChannelId": "",
     "ServerStatusUpdateSeconds": 30,
+    "StatusCategoryName": "",
     "LeaderboardUpdateMinutes": 10,
     "LeaderboardTopLimit": 10,
     "VerifyEnabled": false,

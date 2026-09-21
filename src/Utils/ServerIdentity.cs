@@ -29,6 +29,7 @@ public static class ServerIdentity
     private static DateTime _cachedPublicIpUntilUtc;
     private static int? _cachedPort;
     private static int? _cachedMaxPlayers;
+    private static string? _lastKnownMapName;
 
     public static void ConfigurePublicIp(string? publicIp)
     {
@@ -154,6 +155,19 @@ public static class ServerIdentity
             }
         }
 
+        try
+        {
+            var configuredMax = core.PlayerManager.MaxPlayers;
+            if (IsUsableMaxPlayers(configuredMax))
+            {
+                _cachedMaxPlayers = configuredMax;
+                return configuredMax;
+            }
+        }
+        catch
+        {
+        }
+
         var engineMaxClients = TryGetMaxClientsFromEngine(core);
         if (engineMaxClients.HasValue && IsUsableMaxPlayers(engineMaxClients.Value))
         {
@@ -169,11 +183,21 @@ public static class ServerIdentity
         return IsUsableMaxPlayers(fallback) ? fallback : 64;
     }
 
+    public static void SetCurrentMapName(string? mapName)
+    {
+        var normalized = NormalizeMapName(mapName);
+        if (!string.IsNullOrWhiteSpace(normalized))
+        {
+            _lastKnownMapName = normalized;
+        }
+    }
+
     public static string GetCurrentMap(ISwiftlyCore core)
     {
         var engineMap = TryGetMapFromEngine(core);
         if (!string.IsNullOrWhiteSpace(engineMap))
         {
+            _lastKnownMapName = engineMap;
             return engineMap;
         }
 
@@ -190,6 +214,7 @@ public static class ServerIdentity
                 var normalized = NormalizeMapName(cvar.Value);
                 if (!string.IsNullOrWhiteSpace(normalized))
                 {
+                    _lastKnownMapName = normalized;
                     return normalized;
                 }
             }
@@ -198,27 +223,24 @@ public static class ServerIdentity
             }
         }
 
-        return "unknown";
+        return _lastKnownMapName ?? "unknown";
     }
 
     private static string? TryGetMapFromEngine(ISwiftlyCore core)
     {
         try
         {
-            var mapName = core.Engine.GlobalVars.MapName;
-            var normalized = NormalizeMapName(mapName);
+            var normalized = NormalizeMapName(core.Engine.GlobalVars.MapName);
             if (!string.IsNullOrWhiteSpace(normalized))
             {
                 return normalized;
             }
-            
-            // Fallback for some CS2 engine versions if needed
-            return null;
         }
         catch
         {
-            return null;
         }
+
+        return null;
     }
 
     private static int? TryGetMaxClientsFromEngine(ISwiftlyCore core)

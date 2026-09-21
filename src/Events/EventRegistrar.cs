@@ -114,6 +114,8 @@ public class EventRegistrar
         if (_onRoundStart != null)
             _core.GameEvent.HookPost<EventRoundStart>(e => _onRoundStart(e));
 
+        _core.Event.OnMapLoad += e => ServerIdentity.SetCurrentMapName(e.MapName);
+
         _chatHookGuid = _core.Command.HookClientChat(OnClientChat);
 
         _expiryCheckCts = _core.Scheduler.RepeatBySeconds(30f, CheckExpiredPunishments);

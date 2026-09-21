@@ -23,6 +23,8 @@ public class DiscordBotService
     private readonly string _adminTimeChannelId;
     private readonly string _serverStatusChannelId;
     private readonly string _customConnectUrl;
+    private readonly string _guildId;
+    private readonly string _statusCategoryName;
 
     private readonly int _serverStatusUpdateSeconds;
 
@@ -32,6 +34,7 @@ public class DiscordBotService
     private CancellationTokenSource? _serverStatusPublishCts;
     private CancellationTokenSource? _serverStatusUpdateCts;
     private CancellationTokenSource? _verifyPanelCts;
+    private CancellationTokenSource? _statusChannelsCts;
     private PlayerSessionManager? _playerSessionManager;
     private DiscordServerStatusDbManager? _discordServerStatusDbManager;
     private DiscordMessageStateDbManager? _discordMessageStateDbManager;
@@ -42,6 +45,7 @@ public class DiscordBotService
     private readonly DiscordRestClient _restClient;
     private readonly DiscordNotificationService _notificationService;
     private readonly DiscordServerStatusService _serverStatusService;
+    private readonly DiscordStatusChannelsService _statusChannelsService;
     private readonly DiscordInteractionHandler _interactionHandler;
     private readonly DiscordGatewayClient? _gatewayClient;
     private readonly DiscordVerifyService _verifyService;
@@ -59,6 +63,8 @@ public class DiscordBotService
         _adminTimeChannelId = config.AdminTimeChannelId ?? string.Empty;
         _serverStatusChannelId = config.ServerStatusChannelId ?? string.Empty;
         _customConnectUrl = config.CustomConnectUrl ?? string.Empty;
+        _guildId = config.GuildId ?? string.Empty;
+        _statusCategoryName = config.StatusCategoryName ?? string.Empty;
 
         _serverStatusUpdateSeconds = Math.Max(10, config.ServerStatusUpdateSeconds);
         _bannerUrl = config.BannerUrl ?? string.Empty;
@@ -74,8 +80,16 @@ public class DiscordBotService
             CommandAliasResolver.BuildSet(commandsConfig));
         _serverStatusService = new DiscordServerStatusService(_core, _restClient,
             _serverStatusChannelId, _bannerUrl, _customConnectUrl, _serverName);
+        _statusChannelsService = new DiscordStatusChannelsService(_core, _restClient,
+            _guildId, _statusCategoryName, _serverName, config.ServerPublicIp ?? string.Empty);
         _verifyService = new DiscordVerifyService(_core, _restClient, config);
         _interactionHandler.SetVerifyService(_verifyService);
+
+        if (!string.IsNullOrWhiteSpace(_statusCategoryName) && string.IsNullOrWhiteSpace(_guildId))
+        {
+            _core.Logger.LogWarningIfEnabled(
+                "[CS2_Admin] Discord StatusCategoryName is set but GuildId is empty; status channels will not be created.");
+        }
 
         _core.Logger.LogInformationIfEnabled(
             "[CS2_Admin][Debug][Discord] config botConfigured={BotConfigured} adminLogChannel={AdminLogChannel} chatChannel={ChatChannel} connectionChannel={ConnectionChannel} reportChannel={ReportChannel}",
@@ -117,6 +131,13 @@ public class DiscordBotService
         _ = _serverStatusService.PublishServerStatusAsync();
 
         _serverStatusService.SetDatabaseManagers(discordServerStatusDbManager, discordMessageStateDbManager);
+        _statusChannelsService.SetDatabaseManagers(discordMessageStateDbManager);
+
+        if (HasBotConfiguration() && _statusChannelsService.IsEnabled)
+        {
+            _statusChannelsCts = _core.Scheduler.RepeatBySeconds(30, () => _ = _statusChannelsService.UpdateAsync());
+            _ = _statusChannelsService.UpdateAsync();
+        }
 
         if (_discordLinkDbManager != null)
         {
@@ -148,6 +169,9 @@ public class DiscordBotService
 
         _verifyPanelCts?.Cancel();
         _verifyPanelCts = null;
+
+        _statusChannelsCts?.Cancel();
+        _statusChannelsCts = null;
     }
 
     public void EnsureGatewayConnection()

@@ -153,7 +153,7 @@ public class MessagesConfig
 
 public class DiscordFileConfig
 {
-    public const int CurrentVersion = 11;
+    public const int CurrentVersion = 12;
     public int Version { get; set; } = CurrentVersion;
     public string ServerName { get; set; } = "";
     public string BotToken { get; set; } = "";
@@ -168,6 +168,7 @@ public class DiscordFileConfig
     public string AdminTimeChannelId { get; set; } = "";
     public string ServerStatusChannelId { get; set; } = "";
     public int ServerStatusUpdateSeconds { get; set; } = 30;
+    public string StatusCategoryName { get; set; } = "";
     public bool VerifyEnabled { get; set; } = false;
     public string VerifyChannelId { get; set; } = "";
     public string GuildId { get; set; } = "";
