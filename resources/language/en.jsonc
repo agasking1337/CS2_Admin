@@ -556,6 +556,6 @@
   "discord_verify_discord_already_linked": "❌ This Discord account is already linked to another Steam account. Contact an admin to unlink it.",
   "discord_verify_disabled": "❌ Verification is currently disabled.",
   "discord_verify_error": "❌ Something went wrong. Please try again.",
-  "command_blocker_link_required": "Link your Steam and Discord accounts to use this command. Use !dc.",
+  "command_blocker_link_required": "Link your Steam and Discord accounts to use this command. Use !verify.",
   "command_blocker_role_required": "You need the Discord verified role to use this command."
 }
