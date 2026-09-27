@@ -57,6 +57,65 @@ public class DiscordRestClient
         return await CreateMessageAsync(channelId, BuildMessagePayload(messageContent, null, null));
     }
 
+    public async Task<(bool Success, string? MessageId)> FindVerifyPanelAsync(string channelId, string serverId)
+    {
+        if (!HasBotConfiguration() || string.IsNullOrWhiteSpace(channelId))
+            return (false, null);
+
+        var endpoint = $"{DiscordApiBaseUrl}/channels/{channelId}/messages?limit=100";
+        using var request = new HttpRequestMessage(HttpMethod.Get, endpoint);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bot", _botToken);
+        using var response = await _httpClient.SendAsync(request);
+        if (!response.IsSuccessStatusCode)
+        {
+            await LogDiscordFailureAsync("find verify panel", response);
+            return (false, null);
+        }
+
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var matches = new List<(string Id, string Footer)>();
+        foreach (var message in document.RootElement.EnumerateArray())
+        {
+            if (!message.TryGetProperty("author", out var author)
+                || !author.TryGetProperty("bot", out var bot) || bot.ValueKind != JsonValueKind.True
+                || !message.TryGetProperty("components", out var rows) || rows.ValueKind != JsonValueKind.Array)
+                continue;
+
+            var isPanel = rows.EnumerateArray().Any(row =>
+                row.TryGetProperty("components", out var buttons)
+                && buttons.ValueKind == JsonValueKind.Array
+                && buttons.EnumerateArray().Any(button =>
+                    button.TryGetProperty("custom_id", out var customId)
+                    && customId.GetString() == "verify_open"));
+            if (!isPanel || !message.TryGetProperty("id", out var id))
+                continue;
+
+            var footer = string.Empty;
+            if (message.TryGetProperty("embeds", out var embeds) && embeds.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var embed in embeds.EnumerateArray())
+                {
+                    if (embed.TryGetProperty("footer", out var footerObject)
+                        && footerObject.TryGetProperty("text", out var footerText))
+                    {
+                        footer = footerText.GetString() ?? string.Empty;
+                        break;
+                    }
+                }
+            }
+            matches.Add((id.GetString() ?? string.Empty, footer));
+        }
+
+        var exact = matches.FirstOrDefault(x => x.Footer == $"CS2_Admin | {serverId}");
+        if (!string.IsNullOrWhiteSpace(exact.Id))
+            return (true, exact.Id);
+
+        // An IP/port change can alter the footer. Reuse only an unambiguous panel.
+        return matches.Count > 1
+            ? (false, null) // Ambiguous: do not create another panel.
+            : (true, matches.Count == 1 ? matches[0].Id : null);
+    }
+
     public async Task<bool?> UpdateEmbedAsync(string channelId, string messageId, object embed, string? messageContent = null, object[]? components = null, bool allowEveryoneMention = false)
     {
         if (!HasBotConfiguration() || string.IsNullOrWhiteSpace(channelId) || string.IsNullOrWhiteSpace(messageId))

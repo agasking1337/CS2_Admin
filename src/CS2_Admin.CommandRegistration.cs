@@ -60,7 +60,7 @@ public partial class CS2_Admin
         RegisterCmdList(["hsay"], _hsayCmd.Execute);
         RegisterCmdList(["calladmin"], _callAdminCmd.Execute);
         RegisterCmdList(["report"], _reportCmd.Execute);
-        RegisterCmdList(["verify", "link"], _verifyCmd.Execute);
+        RegisterCmdList(_config.Commands.Verify, _verifyCmd.Execute);
         RegisterCmdList(["unverify", "unlink"], _unverifyCmd.Execute);
         RegisterCmdList(["admintime"], _adminTimeCmd.Execute);
         RegisterCmdList(["admintimesend"], _adminTimeSendCmd.Execute);
@@ -147,6 +147,7 @@ public partial class CS2_Admin
         {
             // Reload sonrası eski (stale) instance'ın handler'ı ise hiçbir şey yapma.
             if (!_commandsActive) return;
+            if (ctx.IsSentByPlayer && ctx.Sender != null && _commandBlocker.ShouldBlock(ctx.Sender.PlayerID, name)) return;
             // Konsoldan direkt komut yazılabilmesi için sw_ kontrolünü kaldırdık.
             if (!CommandExecutionCache.ShouldExecute(ctx, handler.Target?.GetType() ?? typeof(object)))
                 return;

@@ -304,24 +304,6 @@ public static class ServerIdentity
         {
         }
 
-        try
-        {
-            var hostIpLong = core.ConVar.Find<long>("hostip");
-            if (hostIpLong != null)
-            {
-                foreach (var value in ConvertHostIpToCandidates(unchecked((uint)hostIpLong.Value)))
-                {
-                    if (IsUsablePublicServerIp(value))
-                    {
-                        return value;
-                    }
-                }
-            }
-        }
-        catch
-        {
-        }
-
         return null;
     }
 

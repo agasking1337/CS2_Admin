@@ -1,0 +1,10 @@
+{
+  "CS2AdminCommandBlocker": {
+    "Version": 1,
+    "Enabled": true,
+    "BlockedCommands": [
+      "ws"
+    ],
+    "RoleCacheSeconds": 60
+  }
+}

@@ -1,6 +1,6 @@
 {
   "CS2_Discord": {
-    "Version": 12,
+    "Version": 13,
     "ServerName": "",
     "BotToken": "",
     "ServerPublicIp": "",
@@ -13,15 +13,13 @@
     "ReportChannelId": "",
     "AdminTimeChannelId": "",
     "ServerStatusChannelId": "",
-    "LeaderboardChannelId": "",
     "ServerStatusUpdateSeconds": 30,
     "StatusCategoryName": "",
-    "LeaderboardUpdateMinutes": 10,
-    "LeaderboardTopLimit": 10,
+    "DiscordInvite": "",
     "VerifyEnabled": false,
     "VerifyChannelId": "",
     "GuildId": "",
     "VerifiedRoleId": "",
-    "VerifyCodeExpiryMinutes": 10
+    "VerifyCodeExpiryMinutes": 5
   }
 }

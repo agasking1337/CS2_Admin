@@ -11,6 +11,7 @@ namespace CS2_Admin.Commands;
 public class UnverifyCommand : CommandBase
 {
     private readonly DiscordBotService _discord;
+    private readonly string _discordInvite;
 
     public UnverifyCommand(
         ISwiftlyCore core,
@@ -20,10 +21,12 @@ public class UnverifyCommand : CommandBase
         MessagesConfig messages,
         AdminLogManager adminLogManager,
         PermissionService permissionService,
-        DiscordBotService discord)
+        DiscordBotService discord,
+        DiscordFileConfig discordConfig)
         : base(core, permissions, commandsConfig, tags, messages, adminLogManager, permissionService)
     {
         _discord = discord;
+        _discordInvite = discordConfig.DiscordInvite ?? string.Empty;
     }
 
     public override async void Execute(ICommandContext context)
@@ -55,6 +58,8 @@ public class UnverifyCommand : CommandBase
             }
 
             Reply(context, "verify_unlinked");
+            if (!string.IsNullOrWhiteSpace(_discordInvite))
+                Reply(context, "discord_invite", _discordInvite.Trim());
         }
         catch (Exception ex)
         {

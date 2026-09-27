@@ -134,7 +134,9 @@ public abstract class CommandBase : ICommand
     private void SendReply(ICommandContext context, string message)
     {
         var prefix = L("prefix");
-        var formatted = $" \x02{prefix}\x01 {message}";
+        // CS2 chat displays one line per SendChat call. JSON \n becomes a newline
+        // in the translated string; also accept a literal \n in custom language files.
+        var lines = message.Replace("\\n", "\n").Replace("\r\n", "\n").Split('\n');
 
         // SwiftlyS2'nin oyuncu/native API'leri (SendChat, SendMessage...) YALNIZCA ana thread'den
         // çağrılabilir. Komutlar (Execute) genelde bir DB await'inden (Task.Run tabanlı) sonra bu
@@ -147,13 +149,21 @@ public abstract class CommandBase : ICommand
         {
             if (context.IsSentByPlayer && context.Sender != null)
             {
-                context.Sender.SendChat(formatted);
+                foreach (var line in lines)
+                {
+                    if (!string.IsNullOrWhiteSpace(line))
+                        context.Sender.SendChat($" \x02{prefix}\x01 {line}");
+                }
                 return;
             }
 
-            var stripped = StripChatFormatting(message);
-            Core.Logger.LogInformation("[{Prefix}] {Message}", prefix, stripped);
-            Console.WriteLine($"[{prefix}] {stripped}");
+            foreach (var line in lines)
+            {
+                if (string.IsNullOrWhiteSpace(line)) continue;
+                var stripped = StripChatFormatting(line);
+                Core.Logger.LogInformation("[{Prefix}] {Message}", prefix, stripped);
+                Console.WriteLine($"[{prefix}] {stripped}");
+            }
         });
     }
 

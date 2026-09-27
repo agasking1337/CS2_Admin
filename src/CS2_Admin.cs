@@ -25,7 +25,7 @@ using System.Text.Json.Nodes;
 
 namespace CS2_Admin;
 
-[PluginMetadata(Id = "CS2_Admin", Version = "1.0.18", Name = "CS2_Admin", Author = "CanDaysa", Description = "Comprehensive admin plugin for CS2.")]
+[PluginMetadata(Id = "CS2_Admin", Version = "1.0.20", Name = "CS2_Admin", Author = "CanDaysa+aga", Description = "Comprehensive admin plugin for CS2.")]
 public partial class CS2_Admin : BasePlugin
 {
     private PluginConfig _config = null!;
@@ -36,6 +36,8 @@ public partial class CS2_Admin : BasePlugin
     private PlayerSanctionStateService _sanctionStateService = null!;
     private RecentPlayersTracker _recentPlayersTracker = null!;
     private ChatTagConfigManager _chatTagConfigManager = null!;
+    private CommandBlockerService _commandBlocker = null!;
+    private volatile bool _commandBlockerReady;
     private TagDbManager _tagDbManager = null!;
 
     private BanManager _banManager = null!;
@@ -152,9 +154,13 @@ public partial class CS2_Admin : BasePlugin
     public override void Load(bool hotReload)
     {
         _commandsActive = true;
+        _commandBlockerReady = false;
         LoadConfiguration();
         _discord = new DiscordBotService(Core, _config.Discord, _config.Commands);
         InitializeDatabaseManagers();
+        _commandBlocker = new CommandBlockerService(Core, _config.CommandBlocker, _config.Discord, _config.Commands, _discordLinkDbManager);
+        _commandBlocker.Start();
+        _discord.Verify.LinkChanged += _commandBlocker.OnLinkChanged;
         _chatTagConfigManager.SetTagDbManager(_tagDbManager);
         _discord.EnsureGatewayConnection();
         _adminMenuManager = new AdminMenuManager(Core, _config, _warnManager, _adminDbManager, _groupDbManager, _adminLogManager, _adminPlaytimeDbManager, _tagDbManager);
@@ -191,6 +197,9 @@ public partial class CS2_Admin : BasePlugin
         // yapmaz, böylece reload'da duplikasyon oluşmaz (crash riski de yoktur).
         _commandsActive = false;
         _eventRegistrar?.UnregisterAll();
+        if (_commandBlocker != null && _discord != null)
+            _discord.Verify.LinkChanged -= _commandBlocker.OnLinkChanged;
+        _commandBlocker?.Stop();
         _afkManager?.Stop();
         _adminPlaytimeTimer?.Dispose();
         _adminTimeAutoSendTimer?.Dispose();
@@ -207,7 +216,9 @@ public partial class CS2_Admin : BasePlugin
         EnsureConfig<MapsFileConfig>("maps.json", "CS2AdminMaps", MapsFileConfig.CurrentVersion, cfg => { _config.MapsFile = cfg; if (cfg.Maps.Count > 0) _config.GameMaps.Maps = cfg.Maps; if (cfg.WorkshopMaps.Count > 0) _config.WorkshopMaps.Maps = cfg.WorkshopMaps; });
         EnsureConfig<DiscordFileConfig>("discord.json", "CS2_Discord", DiscordFileConfig.CurrentVersion, cfg => { _config.Discord = cfg; ServerIdentity.ConfigurePublicIp(cfg.ServerPublicIp); });
         EnsureConfig<AfkFileConfig>("afk.json", "CS2AdminAfk", AfkFileConfig.CurrentVersion, cfg => _config.Afk = cfg);
-        LoadChatTags();
+        EnsureConfig<CommandsConfig>("commands.json", "CS2AdminCommands", CommandsConfig.CurrentVersion, cfg => _config.Commands = cfg);
+        EnsureConfig<CommandBlockerFileConfig>("commandblocker.json", "CS2AdminCommandBlocker", CommandBlockerFileConfig.CurrentVersion, cfg => _config.CommandBlocker = cfg);
+        EnsureConfig<ChatTagsFileConfig>("tags.json", "CS2AdminTags", ChatTagsFileConfig.CurrentVersion, cfg => _chatTagConfigManager.Load(cfg));
         SanitizeCommandAliases();
         EnsureBanModeConfig();
         _config.BanMode = PluginConfig.NormalizeBanMode(_config.BanMode);
@@ -451,8 +462,8 @@ public partial class CS2_Admin : BasePlugin
         // DiscordBotService only
         _callAdminCmd = new CallAdminCommand(Core, _config.Permissions, _config.Commands, _config.Tags, _config.Messages, _adminLogManager, ps, _discord);
         _reportCmd = new ReportCommand(Core, _config.Permissions, _config.Commands, _config.Tags, _config.Messages, _adminLogManager, ps, _discord, _config.Sanctions);
-        _verifyCmd = new VerifyCommand(Core, _config.Permissions, _config.Commands, _config.Tags, _config.Messages, _adminLogManager, ps, _discord);
-        _unverifyCmd = new UnverifyCommand(Core, _config.Permissions, _config.Commands, _config.Tags, _config.Messages, _adminLogManager, ps, _discord);
+        _verifyCmd = new VerifyCommand(Core, _config.Permissions, _config.Commands, _config.Tags, _config.Messages, _adminLogManager, ps, _discord, _config.Discord);
+        _unverifyCmd = new UnverifyCommand(Core, _config.Permissions, _config.Commands, _config.Tags, _config.Messages, _adminLogManager, ps, _discord, _config.Discord);
 
         // AdminDbManager + GroupDbManager
         _listGroupsCmd = new ListGroupsCommand(Core, _config.Permissions, _config.Commands, _config.Tags, _config.Messages, _adminLogManager, ps, _adminDbManager, _groupDbManager);
@@ -516,6 +527,7 @@ public partial class CS2_Admin : BasePlugin
                 {
                     _connectedPlayersCache[e.PlayerId] = (player.SteamID, player.Controller.PlayerName ?? "", player.IPAddress ?? "");
                     _ = _playerSessionManager.OpenSessionAsync(player.SteamID, player.Controller.PlayerName, e.PlayerId, player.IPAddress);
+                    if (_commandBlockerReady) _commandBlocker.WarmUp(player.SteamID);
                     // Snapshot'ı yenile VE aktif mute varsa voice'u tekrar uygula. VoiceFlags
                     // yalnızca komut anında ayarlandığı için reconnect'te muteli oyuncu aksi halde
                     // konuşabiliyordu; burada snapshot otoriteyle yeniden zorlanıyor.
@@ -817,6 +829,12 @@ public partial class CS2_Admin : BasePlugin
                 StartAdminPlaytimeTracking();
                 StartAdminTimeAutoSend();
                 _discord.StartBackgroundUpdates(_playerSessionManager, _discordServerStatusDbManager, _discordMessageStateDbManager);
+                _commandBlockerReady = true;
+                Core.Scheduler.NextTick(() =>
+                {
+                    foreach (var online in Core.PlayerManager.GetAllPlayers().Where(p => p.IsValid && !p.IsFakeClient))
+                        _commandBlocker.WarmUp(online.SteamID);
+                });
 
                 break;
             }
