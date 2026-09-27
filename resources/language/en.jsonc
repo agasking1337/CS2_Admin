@@ -1,4 +1,4 @@
-{
+ {
   "usage_label": "Usage",
   "no_permission": "You don't have permission to use this command.",
   "player_not_found": "Player not found.",
@@ -540,6 +540,7 @@
   "unsilence_success": "{target} has been unsilenced.",
   "verify_disabled": "Discord verification is disabled on this server.",
   "verify_code": "Your verification code is {code}. Click 'Verify Account' in the Discord verify channel and enter it (expires in {minutes} min).",
+  "discord_invite": "Discord invite: {discordinvite}",
   "verify_already_linked": "Your account is already linked to Discord user {discord}. Use !unverify to unlink.",
   "verify_not_linked": "Your account is not linked to a Discord account.",
   "verify_unlinked": "Your Discord account has been unlinked.",
@@ -555,7 +556,6 @@
   "discord_verify_discord_already_linked": "❌ This Discord account is already linked to another Steam account. Contact an admin to unlink it.",
   "discord_verify_disabled": "❌ Verification is currently disabled.",
   "discord_verify_error": "❌ Something went wrong. Please try again.",
-  "command_blocker_link_required": "Link your Steam and Discord accounts to use this command. Use !verify.",
-  "command_blocker_role_required": "You need the Discord verified role to use this command.",
-  "command_blocker_checking": "Checking your Discord role; try again in a few seconds."
+  "command_blocker_link_required": "Link your Steam and Discord accounts to use this command. Use !dc.",
+  "command_blocker_role_required": "You need the Discord verified role to use this command."
 }
