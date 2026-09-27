@@ -11,6 +11,7 @@ namespace CS2_Admin.Commands;
 public class VerifyCommand : CommandBase
 {
     private readonly DiscordBotService _discord;
+    private readonly string _discordInvite;
 
     public VerifyCommand(
         ISwiftlyCore core,
@@ -20,10 +21,12 @@ public class VerifyCommand : CommandBase
         MessagesConfig messages,
         AdminLogManager adminLogManager,
         PermissionService permissionService,
-        DiscordBotService discord)
+        DiscordBotService discord,
+        DiscordFileConfig discordConfig)
         : base(core, permissions, commandsConfig, tags, messages, adminLogManager, permissionService)
     {
         _discord = discord;
+        _discordInvite = discordConfig.DiscordInvite ?? string.Empty;
     }
 
     public override async void Execute(ICommandContext context)
@@ -56,11 +59,15 @@ public class VerifyCommand : CommandBase
                     ? existing.DiscordId.ToString()
                     : existing.DiscordName;
                 Reply(context, "verify_already_linked", discordLabel);
+                if (!string.IsNullOrWhiteSpace(_discordInvite))
+                    Reply(context, "discord_invite", _discordInvite.Trim());
                 return;
             }
 
             var code = _discord.Verify.CreateCode(steamId);
             Reply(context, "verify_code", code, _discord.Verify.CodeExpiryMinutes);
+            if (!string.IsNullOrWhiteSpace(_discordInvite))
+                Reply(context, "discord_invite", _discordInvite.Trim());
         }
         catch (Exception ex)
         {

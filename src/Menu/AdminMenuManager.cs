@@ -6,6 +6,7 @@ using CS2_Admin.Config;
 using CS2_Admin.Database;
 using CS2_Admin.Menu.Handlers;
 using CS2_Admin.Utils;
+using CS2_Admin.Services;
 using CS2_Admin.Models;
 
 namespace CS2_Admin.Menu;
@@ -146,7 +147,7 @@ public class AdminMenuManager
         try
         {
             var localizer = PluginLocalizer.Get(_core);
-            return args.Length == 0 ? localizer[key] : localizer[key, args];
+            return args.Length == 0 ? localizer[key] : LocalizerHelper.Get(_core, key, args);
         }
         catch
         {

@@ -32,6 +32,7 @@ This plugin provides a highly robust, database-driven foundation for managing ad
 - [Installation](#installation)
 - [Initial Setup](#initial-setup)
 - [Configuration](#configuration)
+- [Command Blocker](#command-blocker)
 - [Commands & Permissions](#commands--permissions)
 
 ---
@@ -79,6 +80,7 @@ CS2_Admin's Discord integration is far beyond a simple webhook logger:
 - **Live Server Status**: A self-updating embed message in your Discord that shows your server's current map, player count, IP address, online/offline status, and a quick-connect command — all updated every 30 seconds.
 - **Leaderboard**: Automatically publishes a top-players leaderboard to Discord at a configurable interval.
 - **Account Verification**: Players link their Steam account to their Discord user via `!verify` (in-game code) + a button/modal panel in your verify channel. Optionally grants a "Verified" role. Links are stored in the `admin_discord_links` table.
+- **Command Blocker**: Optionally require the configured Discord verified role before players can use selected commands. Configure the command list in `commandblocker.json`; all other commands remain available.
 - **Custom Banners**: Add your own server banner image to the status embed for a professional look.
 
 ### 🔁 Auto-Updater
@@ -190,6 +192,10 @@ Defines which Swiftly permissions are mapped to each plugin feature and command.
 Manages Discord bot token, channel IDs for logging, server status, reports, leaderboards, banner configuration, and account verification (`VerifyEnabled`, `VerifyChannelId`, `GuildId`, `VerifiedRoleId`).
 [View Example discord.json](example_configs/discord.json)
 
+### `commandblocker.json`
+Enables or disables the Command Blocker and lists the commands that require the Discord verified role. The file is generated on first load with the feature disabled by default.
+[View Example commandblocker.json](example_configs/commandblocker.json)
+
 ### `tags.json`
 Configures the Admin Tag Manager: per-group chat colors, name colors, tag colors, scoreboard tags, and the default player tag.
 [View Example tags.json](example_configs/tags.json)
@@ -197,6 +203,27 @@ Configures the Admin Tag Manager: per-group chat colors, name colors, tag colors
 ### `maps.json`
 Defines the available game maps and workshop maps that can be selected via `!map` and `!wsmap` commands.
 [View Example maps.json](example_configs/maps.json)
+
+---
+
+## Command Blocker
+
+Set `Enabled` to `true` in `commandblocker.json` and add the command names you want to restrict to `BlockedCommands`. For example:
+
+```json
+{
+  "CS2AdminCommandBlocker": {
+    "Version": 1,
+    "Enabled": true,
+    "BlockedCommands": ["shop", "ws", "skins"],
+    "RoleCacheSeconds": 60
+  }
+}
+```
+
+Configure `VerifyEnabled`, `BotToken`, `GuildId`, and `VerifiedRoleId` in `discord.json` as well. A player can use a listed command only while their Steam account is linked to a Discord account with the configured verified role. Players without a link or role receive a translated chat message. The `!verify` and `!unverify` commands remain accessible so players can manage their link.
+
+Only commands in `BlockedCommands` are affected. The module checks the Discord role asynchronously and caches successful results for `RoleCacheSeconds` (minimum 10, maximum 600 seconds) to reduce repeated requests. The first attempt while a role check is pending is blocked; the player can retry after it completes.
 
 ---
 

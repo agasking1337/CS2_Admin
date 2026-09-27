@@ -1,4 +1,4 @@
-﻿using System.Text.Json.Serialization;
+using System.Text.Json.Serialization;
 
 namespace CS2_Admin.Config;
 
@@ -26,6 +26,8 @@ public class PluginConfig
     public AdminPlaytimeConfig AdminPlaytime { get; set; } = new();
     [JsonIgnore]
     public CommandsConfig Commands { get; set; } = new();
+    [JsonIgnore]
+    public CommandBlockerFileConfig CommandBlocker { get; set; } = new();
     [JsonIgnore]
     public PermissionsConfig Permissions { get; set; } = new();
     [JsonIgnore]
@@ -153,7 +155,7 @@ public class MessagesConfig
 
 public class DiscordFileConfig
 {
-    public const int CurrentVersion = 12;
+    public const int CurrentVersion = 13;
     public int Version { get; set; } = CurrentVersion;
     public string ServerName { get; set; } = "";
     public string BotToken { get; set; } = "";
@@ -169,6 +171,7 @@ public class DiscordFileConfig
     public string ServerStatusChannelId { get; set; } = "";
     public int ServerStatusUpdateSeconds { get; set; } = 30;
     public string StatusCategoryName { get; set; } = "";
+    public string DiscordInvite { get; set; } = "";
     public bool VerifyEnabled { get; set; } = false;
     public string VerifyChannelId { get; set; } = "";
     public string GuildId { get; set; } = "";
@@ -495,3 +498,12 @@ public class SanctionMenuConfig
 }
 
 
+
+public class CommandBlockerFileConfig
+{
+    public const int CurrentVersion = 1;
+    public int Version { get; set; } = CurrentVersion;
+    public bool Enabled { get; set; } = false;
+    public List<string> BlockedCommands { get; set; } = ["shop", "ws", "skins"];
+    public int RoleCacheSeconds { get; set; } = 60;
+}

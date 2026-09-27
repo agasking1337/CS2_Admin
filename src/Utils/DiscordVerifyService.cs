@@ -41,6 +41,7 @@ public class DiscordVerifyService
     private DiscordLinkDbManager? _linkDbManager;
     private DiscordMessageStateDbManager? _messageStateDbManager;
     private string? _panelMessageId;
+    private readonly SemaphoreSlim _panelLock = new(1, 1);
 
     public DiscordVerifyService(ISwiftlyCore core, DiscordRestClient restClient, DiscordFileConfig config)
     {
@@ -52,6 +53,8 @@ public class DiscordVerifyService
         _verifiedRoleId = config.VerifiedRoleId ?? string.Empty;
         _codeTtl = TimeSpan.FromMinutes(Math.Clamp(config.VerifyCodeExpiryMinutes, 1, 1440));
     }
+
+    public event Action<ulong, bool>? LinkChanged;
 
     public bool IsEnabled => _enabled;
     public int CodeExpiryMinutes => (int)_codeTtl.TotalMinutes;
@@ -114,6 +117,8 @@ public class DiscordVerifyService
             return new DiscordVerifyOutcome(DiscordVerifyResult.DbError, steamId);
         }
 
+        LinkChanged?.Invoke(steamId, true);
+
         var effectiveGuildId = !string.IsNullOrWhiteSpace(guildId) ? guildId : _guildId;
         if (!string.IsNullOrWhiteSpace(effectiveGuildId) && !string.IsNullOrWhiteSpace(_verifiedRoleId))
         {
@@ -142,6 +147,8 @@ public class DiscordVerifyService
             return false;
         }
 
+        LinkChanged?.Invoke(steamId, false);
+
         if (!string.IsNullOrWhiteSpace(_guildId) && !string.IsNullOrWhiteSpace(_verifiedRoleId))
         {
             _ = _restClient.RemoveGuildMemberRoleAsync(_guildId, existing.DiscordId.ToString(), _verifiedRoleId);
@@ -153,58 +160,73 @@ public class DiscordVerifyService
     public async Task PublishVerifyPanelAsync()
     {
         if (!_enabled || string.IsNullOrWhiteSpace(_verifyChannelId))
-        {
             return;
-        }
 
+        await _panelLock.WaitAsync();
         try
         {
-            var messageKey = $"verify:{ServerIdentity.GetServerId(_core)}:{_verifyChannelId}";
+            // The channel ID is stable even when the detected server IP or port changes.
+            var messageKey = $"verify:channel:{_verifyChannelId}";
             var dbMessageId = _messageStateDbManager == null
                 ? null
                 : await _messageStateDbManager.GetMessageIdAsync(messageKey);
-
             var previousMessageId = !string.IsNullOrWhiteSpace(dbMessageId)
                 ? dbMessageId
                 : _panelMessageId;
 
+            if (string.IsNullOrWhiteSpace(previousMessageId))
+            {
+                var found = await _restClient.FindVerifyPanelAsync(_verifyChannelId, ServerIdentity.GetServerId(_core));
+                if (!found.Success)
+                    return; // Do not post blindly when existing messages cannot be checked.
+                previousMessageId = found.MessageId;
+            }
+
             var embed = BuildPanelEmbed();
             var components = BuildPanelComponents();
-
             if (!string.IsNullOrWhiteSpace(previousMessageId))
             {
-                var updateResult = await _restClient.UpdateEmbedAsync(_verifyChannelId, previousMessageId, embed, components: components);
-                if (updateResult == true)
+                var updated = await _restClient.UpdateEmbedAsync(_verifyChannelId, previousMessageId, embed, components: components);
+                if (updated == true)
                 {
                     _panelMessageId = previousMessageId;
+                    if (_messageStateDbManager != null && dbMessageId != previousMessageId)
+                        await _messageStateDbManager.UpsertMessageIdAsync(messageKey, _verifyChannelId, previousMessageId);
                     return;
                 }
+                if (updated == false)
+                    return;
 
-                if (updateResult == false)
+                // 404: check for another existing panel before sending a replacement.
+                var found = await _restClient.FindVerifyPanelAsync(_verifyChannelId, ServerIdentity.GetServerId(_core));
+                if (!found.Success)
+                    return;
+                if (!string.IsNullOrWhiteSpace(found.MessageId) && found.MessageId != previousMessageId)
                 {
+                    var recovered = await _restClient.UpdateEmbedAsync(_verifyChannelId, found.MessageId, embed, components: components);
+                    if (recovered != true)
+                        return;
+                    _panelMessageId = found.MessageId;
+                    if (_messageStateDbManager != null)
+                        await _messageStateDbManager.UpsertMessageIdAsync(messageKey, _verifyChannelId, found.MessageId);
                     return;
                 }
             }
 
             var newMessageId = await _restClient.SendEmbedAsync(_verifyChannelId, embed, components: components);
-            if (!string.IsNullOrWhiteSpace(newMessageId))
-            {
-                _panelMessageId = newMessageId;
-
-                if (_messageStateDbManager != null)
-                {
-                    await _messageStateDbManager.UpsertMessageIdAsync(messageKey, _verifyChannelId, newMessageId);
-                }
-
-                if (!string.IsNullOrWhiteSpace(previousMessageId) && !string.Equals(previousMessageId, newMessageId, StringComparison.Ordinal))
-                {
-                    await _restClient.DeleteMessageAsync(_verifyChannelId, previousMessageId);
-                }
-            }
+            if (string.IsNullOrWhiteSpace(newMessageId))
+                return;
+            _panelMessageId = newMessageId;
+            if (_messageStateDbManager != null)
+                await _messageStateDbManager.UpsertMessageIdAsync(messageKey, _verifyChannelId, newMessageId);
         }
         catch (Exception ex)
         {
             _core.Logger.LogWarningIfEnabled("[CS2_Admin] Error publishing verify panel: {Message}", ex.Message);
+        }
+        finally
+        {
+            _panelLock.Release();
         }
     }
 

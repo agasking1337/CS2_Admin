@@ -34,6 +34,11 @@ public class ChatTagConfigManager
         Config = new ChatTagsFileConfig();
     }
 
+    public void Load(ChatTagsFileConfig config)
+    {
+        Config = config ?? new ChatTagsFileConfig();
+    }
+
     public async Task SyncWithGroupsAsync(GroupDbManager groupManager)
     {
         if (_tagDbManager == null)

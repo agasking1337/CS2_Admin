@@ -554,5 +554,8 @@
   "discord_verify_invalid_code": "❌ Invalid or expired code. Use `!verify` in-game to get a new one.",
   "discord_verify_discord_already_linked": "❌ This Discord account is already linked to another Steam account. Contact an admin to unlink it.",
   "discord_verify_disabled": "❌ Verification is currently disabled.",
-  "discord_verify_error": "❌ Something went wrong. Please try again."
+  "discord_verify_error": "❌ Something went wrong. Please try again.",
+  "command_blocker_link_required": "Link your Steam and Discord accounts to use this command. Use !verify.",
+  "command_blocker_role_required": "You need the Discord verified role to use this command.",
+  "command_blocker_checking": "Checking your Discord role; try again in a few seconds."
 }
