@@ -174,6 +174,9 @@ public class DiscordVerifyService
                 ? dbMessageId
                 : _panelMessageId;
 
+            if (string.IsNullOrWhiteSpace(previousMessageId) && _messageStateDbManager != null)
+                previousMessageId = await _messageStateDbManager.GetMessageIdAsync($"verify:{ServerIdentity.GetServerId(_core)}:{_verifyChannelId}");
+
             if (string.IsNullOrWhiteSpace(previousMessageId))
             {
                 var found = await _restClient.FindVerifyPanelAsync(_verifyChannelId, ServerIdentity.GetServerId(_core));
