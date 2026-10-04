@@ -41,6 +41,7 @@ public class EventRegistrar
     private int _isBanEnforcementRunning;
     private readonly ConcurrentDictionary<ulong, string> _lastKnownAdminTags = new();
     private readonly HashSet<string> _commandAliases;
+    private readonly HashSet<string> _silentCommandAliases;
 
     private Action<IOnClientPutInServerEvent>? _onClientPutInServer;
     private Action<IOnClientSteamAuthorizeEvent>? _onClientSteamAuthorize;
@@ -48,6 +49,7 @@ public class EventRegistrar
     private Func<EventPlayerConnectFull, HookResult>? _onPlayerConnectFull;
     private Func<EventPlayerDisconnect, HookResult>? _onPlayerDisconnect;
     private Func<EventRoundStart, HookResult>? _onRoundStart;
+    private Func<EventPlayerTeam, HookResult>? _onPlayerTeam;
 
     public EventRegistrar(
         ISwiftlyCore core,
@@ -83,6 +85,9 @@ public class EventRegistrar
         _playerSessionManager = playerSessionManager;
         _discord = discord;
         _commandAliases = CommandAliasResolver.BuildSet(commandsConfig);
+        _silentCommandAliases = new HashSet<string>(
+            commandsConfig?.Hide.Where(alias => !string.IsNullOrWhiteSpace(alias)).Select(alias => alias.Trim()) ?? [],
+            StringComparer.OrdinalIgnoreCase);
     }
 
     public void SetDatabaseReady(bool ready) => _databaseReady = ready;
@@ -93,6 +98,7 @@ public class EventRegistrar
     public void OnPlayerConnectFull(Func<EventPlayerConnectFull, HookResult> handler) => _onPlayerConnectFull = handler;
     public void OnPlayerDisconnect(Func<EventPlayerDisconnect, HookResult> handler) => _onPlayerDisconnect = handler;
     public void OnRoundStart(Func<EventRoundStart, HookResult> handler) => _onRoundStart = handler;
+    public void OnPlayerTeam(Func<EventPlayerTeam, HookResult> handler) => _onPlayerTeam = handler;
 
     public void RegisterAll()
     {
@@ -113,6 +119,9 @@ public class EventRegistrar
 
         if (_onRoundStart != null)
             _core.GameEvent.HookPost<EventRoundStart>(e => _onRoundStart(e));
+
+        if (_onPlayerTeam != null)
+            _core.GameEvent.HookPost<EventPlayerTeam>(e => _onPlayerTeam(e));
 
         _core.Event.OnMapLoad += e => ServerIdentity.SetCurrentMapName(e.MapName);
 
@@ -149,6 +158,9 @@ public class EventRegistrar
             _ = _playerNameHistoryManager.ObserveNameAsync(player.SteamID, player.Controller.PlayerName);
             _ = _playerSessionManager.TouchSessionAsync(player.SteamID, player.Controller.PlayerName, playerId, player.IPAddress);
         }
+
+        if (IsSilentCommand(text))
+            return HookResult.Stop;
 
         if (!string.IsNullOrWhiteSpace(text))
             _ = _discord?.SendChatNotificationAsync(player, text, teamOnly);
@@ -234,6 +246,17 @@ public class EventRegistrar
         }
 
         return HookResult.Continue;
+    }
+
+    private bool IsSilentCommand(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text) || (text[0] != '!' && text[0] != '/'))
+            return false;
+
+        var alias = text[1..]
+            .Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries)
+            .FirstOrDefault();
+        return alias != null && _silentCommandAliases.Contains(alias);
     }
 
     private void BroadcastFormattedChat(IPlayer sender, string rawText, bool teamOnly)

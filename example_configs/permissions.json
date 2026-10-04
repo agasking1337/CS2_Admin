@@ -73,6 +73,7 @@
     "Rcon": "admin.rcon",
     "Cvar": "admin.cvar",
     "ListPlayers": "admin.generic",
-    "Who": "admin.generic"
+    "Who": "admin.generic",
+    "Hide": "admin.generic"
   }
 }

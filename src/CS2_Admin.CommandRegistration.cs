@@ -121,6 +121,7 @@ public partial class CS2_Admin
         RegisterCmdList(["cvar"], _cvarCmd.Execute);
         RegisterCmdList(_config.Commands.ListPlayers, _listPlayersCmd.Execute);
         RegisterCmdList(_config.Commands.Who, _whoCmd.Execute);
+        RegisterCmdList(_config.Commands.Hide, _hideCmd.Execute);
 
         RegisterCmdList(["addadmin"], _addAdminCmd.Execute);
         RegisterCmdList(["editadmin"], _editAdminCmd.Execute);

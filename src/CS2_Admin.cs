@@ -35,6 +35,7 @@ public partial class CS2_Admin : BasePlugin
     private IVipCoreApiV1? _vipApi;
     private EventRegistrar _eventRegistrar = null!;
     private AfkManagerService _afkManager = null!;
+    private AdminVisibilityService _adminVisibilityService = null!;
     private PlayerSanctionStateService _sanctionStateService = null!;
     private RecentPlayersTracker _recentPlayersTracker = null!;
     private ChatTagConfigManager _chatTagConfigManager = null!;
@@ -125,6 +126,7 @@ public partial class CS2_Admin : BasePlugin
     private CvarCommand _cvarCmd = null!;
     private ListPlayersCommand _listPlayersCmd = null!;
     private WhoCommand _whoCmd = null!;
+    private HideCommand _hideCmd = null!;
 
     private AddAdminCommand _addAdminCmd = null!;
     private EditAdminCommand _editAdminCmd = null!;
@@ -174,6 +176,7 @@ public partial class CS2_Admin : BasePlugin
         _discord = new DiscordBotService(Core, _config.Discord, _config.Commands);
         _discord.Verify.SetVipApi(_vipApi);
         InitializeDatabaseManagers();
+        _adminVisibilityService = new AdminVisibilityService(Core);
         _commandBlocker = new CommandBlockerService(Core, _config.CommandBlocker, _config.Discord, _config.Commands, _discordLinkDbManager);
         _commandBlocker.Start();
         _discord.Verify.LinkChanged += _commandBlocker.OnLinkChanged;
@@ -217,6 +220,7 @@ public partial class CS2_Admin : BasePlugin
             _discord.Verify.LinkChanged -= _commandBlocker.OnLinkChanged;
         _commandBlocker?.Stop();
         _afkManager?.Stop();
+        _adminVisibilityService?.RestoreAll();
         _adminPlaytimeTimer?.Dispose();
         _adminTimeAutoSendTimer?.Dispose();
         _periodicUpdateTimer?.Dispose();
@@ -530,6 +534,7 @@ public partial class CS2_Admin : BasePlugin
 
         // Who command
         _whoCmd = new WhoCommand(Core, _config.Permissions, _config.Commands, _config.Tags, _config.Messages, _adminLogManager, ps);
+        _hideCmd = new HideCommand(Core, _config.Permissions, _config.Commands, _config.Tags, _config.Messages, _adminLogManager, ps, _adminVisibilityService);
     }
 
     private void InitializeEventHandlers()
@@ -655,11 +660,22 @@ public partial class CS2_Admin : BasePlugin
         {
             if (_connectedPlayersCache.TryGetValue(e.PlayerId, out var cached))
             {
+                _adminVisibilityService.Remove(cached.SteamId);
                 _connectedPlayersCache.TryRemove(e.PlayerId, out _);
                 _recentPlayersTracker.Add(new RecentPlayerInfo(cached.SteamId, cached.Name, cached.Ip, DateTime.UtcNow));
                 _ = _playerSessionManager.CloseSessionAsync(cached.SteamId, cached.Name, e.PlayerId, cached.Ip);
                 _ = _discord.SendDisconnectNotificationAsync(cached.Name, cached.SteamId, cached.Ip);
             }
+        });
+        _eventRegistrar.OnPlayerTeam(ev =>
+        {
+            if (!ev.Disconnect)
+            {
+                var controller = ev.UserIdController;
+                var team = (Team)ev.Team;
+                Core.Scheduler.NextTick(() => _adminVisibilityService.OnTeamChanged(controller, team));
+            }
+            return HookResult.Continue;
         });
         _eventRegistrar.OnRoundStart(ev =>
         {

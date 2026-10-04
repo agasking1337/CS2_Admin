@@ -339,6 +339,7 @@ public class CommandsConfig
     public List<string> Cvar { get; set; } = ["cvar"];
     public List<string> ListPlayers { get; set; } = ["players"];
     public List<string> Who { get; set; } = ["who"];
+    public List<string> Hide { get; set; } = ["hide"];
 }
 
 public class PermissionsConfig
@@ -422,6 +423,7 @@ public class PermissionsConfig
     public string Cvar { get; set; } = "admin.cvar";
     public string ListPlayers { get; set; } = "admin.generic";
     public string Who { get; set; } = "admin.generic";
+    public string Hide { get; set; } = "admin.generic";
 
     [JsonIgnore]
     public List<string> RootBypassPermissions { get; set; } = ["admin.*", "*"];

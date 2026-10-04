@@ -7,6 +7,8 @@
   "invalid_steamid": "Invalid SteamID.",
   "invalid_team": "Invalid team. Use: t, ct, or spec",
   "player_only_command": "This command can only be used by players.",
+  "hide_enabled": "You are now hidden and appear disconnected.",
+  "hide_disabled": "You are visible again.",
   "cannot_target_self_goto": "You cannot use goto on yourself.",
   "cannot_target_self_bring": "You cannot use bring on yourself.",
   "cannot_target_self": "You cannot target yourself.",
