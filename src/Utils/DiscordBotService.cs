@@ -123,7 +123,7 @@ public class DiscordBotService
         _discordServerStatusDbManager = discordServerStatusDbManager;
         _discordMessageStateDbManager = discordMessageStateDbManager;
 
-        StopBackgroundUpdates();
+        StopBackgroundUpdates(stopGateway: false);
 
         _gatewayClient?.Start();
 
@@ -157,9 +157,10 @@ public class DiscordBotService
         }
     }
 
-    public void StopBackgroundUpdates()
+    public void StopBackgroundUpdates(bool stopGateway = true)
     {
-        _gatewayClient?.Stop();
+        if (stopGateway)
+            _gatewayClient?.Stop();
 
         _serverStatusPublishCts?.Cancel();
         _serverStatusPublishCts = null;
