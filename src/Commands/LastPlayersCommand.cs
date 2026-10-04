@@ -8,53 +8,55 @@ using SwiftlyS2.Shared.Commands;
 
 namespace CS2_Admin.Commands;
 
-public class WhoCommand : CommandBase
+public class LastPlayersCommand : CommandBase
 {
-    public WhoCommand(
+    private readonly PlayerSessionManager _playerSessionManager;
+
+    public LastPlayersCommand(
         ISwiftlyCore core,
         PermissionsConfig permissions,
         CommandsConfig commandsConfig,
         TagsConfig tags,
         MessagesConfig messages,
         AdminLogManager adminLogManager,
-        PermissionService permissionService)
+        PermissionService permissionService,
+        PlayerSessionManager playerSessionManager)
         : base(core, permissions, commandsConfig, tags, messages, adminLogManager, permissionService)
     {
+        _playerSessionManager = playerSessionManager;
     }
 
-    public override void Execute(ICommandContext context)
+    public override async void Execute(ICommandContext context)
     {
         try
         {
-            if (!HasPerm(context, Permissions.Who))
+            if (!HasPerm(context, Permissions.LastPlayers))
             {
                 Reply(context, "no_permission");
                 return;
             }
 
-            var args = NormalizeArgs(context.Args, CommandsConfig.Who);
-            var target = string.Join(' ', args).Trim();
-            var matchedPlayers = string.IsNullOrWhiteSpace(target)
-                ? Core.PlayerManager.GetAllPlayers().Where(player => player.IsValid && !player.IsFakeClient).ToList()
-                : PlayerUtils.FindPlayersByTarget(Core, target, caller: context.Sender)
-                    .Where(player => !player.IsFakeClient)
-                    .ToList();
-
-            if (matchedPlayers.Count == 0)
+            var recent = await _playerSessionManager.GetRecentDisconnectedPlayersAsync(5);
+            if (recent.Count == 0)
             {
-                Reply(context, "player_not_found");
+                Reply(context, "lastban_no_recent_players");
                 return;
             }
 
-            var lines = matchedPlayers
-                .OrderBy(player => player.PlayerID)
-                .Select(player => $"#{player.PlayerID} | {player.SteamID} | {SanitizePlayerName(player.Controller.PlayerName)} | {NormalizePlayerIp(player.IPAddress)}")
+            var lines = recent.Take(5)
+                .Select(player => $"{SanitizePlayerName(player.Name)} | {player.SteamId} | {NormalizePlayerIp(player.IpAddress)} | {player.LastSeenAt:yyyy-MM-dd HH:mm:ss}")
                 .ToList();
 
             if (context.IsSentByPlayer && context.Sender != null)
             {
-                context.Sender.SendConsole(string.Join('\n', lines));
-                context.Sender.SendChat($" \x02{L("prefix")}\x01 {L("players_list_console")}");
+                await OnMainThreadAsync(() =>
+                {
+                    if (!context.Sender.IsValid)
+                        return;
+
+                    context.Sender.SendConsole(string.Join('\n', lines));
+                    context.Sender.SendChat($" \x02{L("prefix")}\x01 {L("last_players_console")}");
+                });
                 return;
             }
 
@@ -63,7 +65,7 @@ public class WhoCommand : CommandBase
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] Who command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] Last players command failed");
         }
     }
 

@@ -66,7 +66,8 @@ public partial class CS2_Admin
         RegisterCmdList(["admintimesend"], _adminTimeSendCmd.Execute);
         RegisterCmdList(["ban"], _banCmd.Execute);
         RegisterCmdList(["ipban"], _ipBanCmd.Execute);
-        RegisterCmdList(["lastban"], _lastBanCmd.Execute);
+        RegisterCmdList(_config.Commands.LastBan, _lastBanCmd.Execute);
+        RegisterCmdList(_config.Commands.LastPlayers, _lastPlayersCmd.Execute);
         RegisterCmdList(["addban"], _addBanCmd.Execute);
         RegisterCmdList(["unban"], _unbanCmd.Execute);
         RegisterCmdList(["warn"], _warnCmd.Execute);

@@ -26,6 +26,7 @@
     "Ban": "admin.ban",
     "IpBan": "admin.ban",
     "LastBan": "admin.ban",
+    "LastPlayers": "admin.generic",
     "Warn": "admin.generic",
     "Unwarn": "admin.generic",
     "ListWarns": "admin.generic",

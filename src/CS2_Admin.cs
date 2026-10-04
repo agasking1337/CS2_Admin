@@ -75,6 +75,7 @@ public partial class CS2_Admin : BasePlugin
     private BanCommand _banCmd = null!;
     private IpBanCommand _ipBanCmd = null!;
     private LastBanCommand _lastBanCmd = null!;
+    private LastPlayersCommand _lastPlayersCmd = null!;
     private AddBanCommand _addBanCmd = null!;
     private UnbanCommand _unbanCmd = null!;
     private WarnCommand _warnCmd = null!;
@@ -513,6 +514,7 @@ public partial class CS2_Admin : BasePlugin
         _unbanCmd = new UnbanCommand(Core, _banManager, _muteManager, _gagManager, _warnManager, _adminDbManager, _adminLogManager, _playerIpDbManager, _playerSessionManager, _recentPlayersTracker, _discord, _config.Permissions, _config.Commands, _config.Tags, _config.Messages, _config.Sanctions, _config.MultiServer, _config.EffectiveBanType, _sanctionStateService, ps);
         _addBanCmd = new AddBanCommand(Core, _banManager, _muteManager, _gagManager, _warnManager, _adminDbManager, _adminLogManager, _playerIpDbManager, _playerSessionManager, _recentPlayersTracker, _discord, _config.Permissions, _config.Commands, _config.Tags, _config.Messages, _config.Sanctions, _config.MultiServer, _config.EffectiveBanType, _sanctionStateService, ps);
         _lastBanCmd = new LastBanCommand(Core, _banManager, _muteManager, _gagManager, _warnManager, _adminDbManager, _adminLogManager, _playerIpDbManager, _playerSessionManager, _recentPlayersTracker, _discord, _config.Permissions, _config.Commands, _config.Tags, _config.Messages, _config.Sanctions, _config.MultiServer, _config.EffectiveBanType, _sanctionStateService, ps, _config.Commands.LastBan);
+        _lastPlayersCmd = new LastPlayersCommand(Core, _config.Permissions, _config.Commands, _config.Tags, _config.Messages, _adminLogManager, ps, _playerSessionManager);
 
         // Mute/Gag/Silence commands
         _muteCmd = new MuteCommand(Core, _config.Permissions, _config.Commands, _config.Tags, _config.Messages, _adminLogManager, ps, _muteManager, _gagManager, _adminDbManager, _discord, _sanctionStateService, _config.Permissions.Mute);
@@ -527,7 +529,7 @@ public partial class CS2_Admin : BasePlugin
         _unwarnCmd = new UnwarnCommand(Core, _config.Permissions, _config.Commands, _config.Tags, _config.Messages, _adminLogManager, ps, _warnManager, _adminDbManager, _discord, _sanctionStateService);
 
         // Who command
-        _whoCmd = new WhoCommand(Core, _config.Permissions, _config.Commands, _config.Tags, _config.Messages, _adminLogManager, ps, _adminDbManager);
+        _whoCmd = new WhoCommand(Core, _config.Permissions, _config.Commands, _config.Tags, _config.Messages, _adminLogManager, ps);
     }
 
     private void InitializeEventHandlers()

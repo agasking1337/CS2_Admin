@@ -238,6 +238,7 @@ public class CommandsConfig
     public List<string> Ban { get; set; } = ["ban"];
     public List<string> IpBan { get; set; } = ["ipban"];
     public List<string> LastBan { get; set; } = ["lastban"];
+    public List<string> LastPlayers { get; set; } = ["last"];
     public List<string> Warn { get; set; } = ["warn"];
     public List<string> Unwarn { get; set; } = ["unwarn"];
     public List<string> AddBan { get; set; } = ["addban"];
@@ -369,6 +370,7 @@ public class PermissionsConfig
     public string Ban { get; set; } = "admin.ban";
     public string IpBan { get; set; } = "admin.ban";
     public string LastBan { get; set; } = "admin.ban";
+    public string LastPlayers { get; set; } = "admin.generic";
     public string Warn { get; set; } = "admin.generic";
     public string Unwarn { get; set; } = "admin.generic";
     public string ListWarns { get; set; } = "admin.generic";
