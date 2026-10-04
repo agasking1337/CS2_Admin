@@ -1,6 +1,6 @@
 {
   "CS2_Discord": {
-    "Version": 13,
+    "Version": 14,
     "ServerName": "",
     "BotToken": "",
     "ServerPublicIp": "",
@@ -20,6 +20,8 @@
     "VerifyChannelId": "",
     "GuildId": "",
     "VerifiedRoleId": "",
-    "VerifyCodeExpiryMinutes": 5
+    "VerifyCodeExpiryMinutes": 5,
+    "VerifyVipGroup": "VIP_STANDARD",
+    "VerifyVipDuration": 30
   }
 }

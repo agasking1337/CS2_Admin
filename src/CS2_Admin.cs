@@ -17,6 +17,7 @@ using SwiftlyS2.Shared.Misc;
 using SwiftlyS2.Shared.Players;
 using SwiftlyS2.Shared.Plugins;
 using SwiftlyS2.Shared.ProtobufDefinitions;
+using VIPCore.Contract;
 using System.Collections.Concurrent;
 using System.Globalization;
 using System.Reflection;
@@ -31,6 +32,7 @@ public partial class CS2_Admin : BasePlugin
     private PluginConfig _config = null!;
     private AdminMenuManager _adminMenuManager = null!;
     private DiscordBotService _discord = null!;
+    private IVipCoreApiV1? _vipApi;
     private EventRegistrar _eventRegistrar = null!;
     private AfkManagerService _afkManager = null!;
     private PlayerSanctionStateService _sanctionStateService = null!;
@@ -121,6 +123,7 @@ public partial class CS2_Admin : BasePlugin
     private RconCommand _rconCmd = null!;
     private CvarCommand _cvarCmd = null!;
     private ListPlayersCommand _listPlayersCmd = null!;
+    private WhoCommand _whoCmd = null!;
 
     private AddAdminCommand _addAdminCmd = null!;
     private EditAdminCommand _editAdminCmd = null!;
@@ -151,12 +154,24 @@ public partial class CS2_Admin : BasePlugin
 
     public CS2_Admin(ISwiftlyCore core) : base(core) { }
 
+    public override void UseSharedInterface(IInterfaceManager interfaceManager)
+    {
+        _vipApi = interfaceManager.HasSharedInterface("VIPCore.Api.v1")
+            ? interfaceManager.GetSharedInterface<IVipCoreApiV1>("VIPCore.Api.v1")
+            : null;
+        if (_discord != null)
+        {
+            _discord.Verify.SetVipApi(_vipApi);
+        }
+    }
+
     public override void Load(bool hotReload)
     {
         _commandsActive = true;
         _commandBlockerReady = false;
         LoadConfiguration();
         _discord = new DiscordBotService(Core, _config.Discord, _config.Commands);
+        _discord.Verify.SetVipApi(_vipApi);
         InitializeDatabaseManagers();
         _commandBlocker = new CommandBlockerService(Core, _config.CommandBlocker, _config.Discord, _config.Commands, _discordLinkDbManager);
         _commandBlocker.Start();
@@ -512,7 +527,7 @@ public partial class CS2_Admin : BasePlugin
         _unwarnCmd = new UnwarnCommand(Core, _config.Permissions, _config.Commands, _config.Tags, _config.Messages, _adminLogManager, ps, _warnManager, _adminDbManager, _discord, _sanctionStateService);
 
         // Who command
-
+        _whoCmd = new WhoCommand(Core, _config.Permissions, _config.Commands, _config.Tags, _config.Messages, _adminLogManager, ps, _adminDbManager);
     }
 
     private void InitializeEventHandlers()

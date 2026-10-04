@@ -5,6 +5,7 @@ using CS2_Admin.Models;
 using Microsoft.Extensions.Logging;
 using SwiftlyS2.Shared;
 using SwiftlyS2.Shared.Players;
+using VIPCore.Contract;
 
 namespace CS2_Admin.Utils;
 
@@ -33,6 +34,8 @@ public class DiscordVerifyService
     private readonly string _verifyChannelId;
     private readonly string _guildId;
     private readonly string _verifiedRoleId;
+    private readonly string _verifyVipGroup;
+    private readonly int _verifyVipDuration;
     private readonly TimeSpan _codeTtl;
 
     private readonly ConcurrentDictionary<string, PendingVerification> _pendingByCode = new(StringComparer.OrdinalIgnoreCase);
@@ -40,6 +43,7 @@ public class DiscordVerifyService
 
     private DiscordLinkDbManager? _linkDbManager;
     private DiscordMessageStateDbManager? _messageStateDbManager;
+    private IVipCoreApiV1? _vipApi;
     private string? _panelMessageId;
     private readonly SemaphoreSlim _panelLock = new(1, 1);
 
@@ -51,6 +55,8 @@ public class DiscordVerifyService
         _verifyChannelId = config.VerifyChannelId ?? string.Empty;
         _guildId = config.GuildId ?? string.Empty;
         _verifiedRoleId = config.VerifiedRoleId ?? string.Empty;
+        _verifyVipGroup = config.VerifyVipGroup?.Trim() ?? string.Empty;
+        _verifyVipDuration = Math.Max(0, config.VerifyVipDuration);
         _codeTtl = TimeSpan.FromMinutes(Math.Clamp(config.VerifyCodeExpiryMinutes, 1, 1440));
     }
 
@@ -63,6 +69,11 @@ public class DiscordVerifyService
     {
         _linkDbManager = linkDbManager;
         _messageStateDbManager = messageStateDbManager;
+    }
+
+    public void SetVipApi(IVipCoreApiV1? vipApi)
+    {
+        _vipApi = vipApi;
     }
 
     public string CreateCode(ulong steamId)
@@ -118,6 +129,7 @@ public class DiscordVerifyService
         }
 
         LinkChanged?.Invoke(steamId, true);
+        UpdateVerificationVip(steamId, true);
 
         var effectiveGuildId = !string.IsNullOrWhiteSpace(guildId) ? guildId : _guildId;
         if (!string.IsNullOrWhiteSpace(effectiveGuildId) && !string.IsNullOrWhiteSpace(_verifiedRoleId))
@@ -142,16 +154,46 @@ public class DiscordVerifyService
             return false;
         }
 
-        if (!await _linkDbManager.UnlinkBySteamIdAsync(steamId))
+        return await UnlinkInternalAsync(existing, removeRole: true);
+    }
+
+    public async Task<bool> OnGuildMemberRemovedAsync(ulong discordId, string guildId)
+    {
+        if (!_enabled || _linkDbManager == null)
+        {
+            return false;
+        }
+
+        if (!string.Equals(_guildId, guildId, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var existing = await _linkDbManager.GetByDiscordIdAsync(discordId);
+        if (existing == null)
+        {
+            return false;
+        }
+
+        return await UnlinkInternalAsync(existing, removeRole: false);
+    }
+
+    private async Task<bool> UnlinkInternalAsync(DiscordLink existing, bool removeRole)
+    {
+        var steamId = existing.SteamId;
+        var discordId = existing.DiscordId;
+
+        if (!await _linkDbManager!.UnlinkBySteamIdAsync(steamId))
         {
             return false;
         }
 
         LinkChanged?.Invoke(steamId, false);
+        UpdateVerificationVip(steamId, false);
 
-        if (!string.IsNullOrWhiteSpace(_guildId) && !string.IsNullOrWhiteSpace(_verifiedRoleId))
+        if (removeRole && !string.IsNullOrWhiteSpace(_guildId) && !string.IsNullOrWhiteSpace(_verifiedRoleId))
         {
-            _ = _restClient.RemoveGuildMemberRoleAsync(_guildId, existing.DiscordId.ToString(), _verifiedRoleId);
+            _ = _restClient.RemoveGuildMemberRoleAsync(_guildId, discordId.ToString(), _verifiedRoleId);
         }
 
         return true;
@@ -266,6 +308,37 @@ public class DiscordVerifyService
                 }
             }
         };
+    }
+
+    private void UpdateVerificationVip(ulong steamId, bool grant)
+    {
+        _core.Scheduler.NextTick(() =>
+        {
+            var player = _core.PlayerManager.GetAllPlayers()
+                .FirstOrDefault(p => p.IsValid && !p.IsFakeClient && p.SteamID == steamId);
+            if (player == null || _vipApi?.IsCoreReady() != true)
+            {
+                return;
+            }
+
+            if (grant)
+            {
+                if (string.IsNullOrWhiteSpace(_verifyVipGroup)
+                    || !_vipApi.GetVipGroups().Contains(_verifyVipGroup, StringComparer.OrdinalIgnoreCase))
+                {
+                    _core.Logger.LogWarningIfEnabled(
+                        "[CS2_Admin] Cannot grant verification VIP to {SteamId}: VIP group '{Group}' is not configured in VIPCore.",
+                        steamId,
+                        _verifyVipGroup);
+                    return;
+                }
+
+                _vipApi.GiveClientVip(player, _verifyVipGroup, _verifyVipDuration);
+                return;
+            }
+
+            _vipApi.RemoveClientVip(player);
+        });
     }
 
     private void NotifyLinkedInGame(ulong steamId, string discordName)

@@ -155,7 +155,7 @@ public class MessagesConfig
 
 public class DiscordFileConfig
 {
-    public const int CurrentVersion = 13;
+    public const int CurrentVersion = 14;
     public int Version { get; set; } = CurrentVersion;
     public string ServerName { get; set; } = "";
     public string BotToken { get; set; } = "";
@@ -177,6 +177,8 @@ public class DiscordFileConfig
     public string GuildId { get; set; } = "";
     public string VerifiedRoleId { get; set; } = "";
     public int VerifyCodeExpiryMinutes { get; set; } = 10;
+    public string VerifyVipGroup { get; set; } = "VIP_STANDARD";
+    public int VerifyVipDuration { get; set; } = 30;
 }
 
 public class AfkFileConfig
@@ -335,6 +337,7 @@ public class CommandsConfig
     [JsonIgnore]
     public List<string> Cvar { get; set; } = ["cvar"];
     public List<string> ListPlayers { get; set; } = ["players"];
+    public List<string> Who { get; set; } = ["who"];
 }
 
 public class PermissionsConfig
@@ -416,6 +419,7 @@ public class PermissionsConfig
     public string Rcon { get; set; } = "admin.rcon";
     public string Cvar { get; set; } = "admin.cvar";
     public string ListPlayers { get; set; } = "admin.generic";
+    public string Who { get; set; } = "admin.generic";
 
     [JsonIgnore]
     public List<string> RootBypassPermissions { get; set; } = ["admin.*", "*"];

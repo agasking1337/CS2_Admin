@@ -71,8 +71,9 @@ public class DiscordBotService
 
         _restClient = new DiscordRestClient(_core, _botToken);
         _interactionHandler = new DiscordInteractionHandler(_core, _restClient, _botToken);
+        _verifyService = new DiscordVerifyService(_core, _restClient, config);
         _gatewayClient = HasBotConfiguration()
-            ? new DiscordGatewayClient(_core, _botToken, _interactionHandler.HandleInteractionAsync)
+            ? new DiscordGatewayClient(_core, _botToken, _interactionHandler.HandleInteractionAsync, _verifyService.OnGuildMemberRemovedAsync)
             : null;
         _notificationService = new DiscordNotificationService(_core, _restClient, _serverName,
             _defaultChannelId, _connectionChannelId, _chatChannelId,
@@ -82,7 +83,6 @@ public class DiscordBotService
             _serverStatusChannelId, _bannerUrl, _customConnectUrl, _serverName);
         _statusChannelsService = new DiscordStatusChannelsService(_core, _restClient,
             _guildId, _statusCategoryName, _serverName, config.ServerPublicIp ?? string.Empty);
-        _verifyService = new DiscordVerifyService(_core, _restClient, config);
         _interactionHandler.SetVerifyService(_verifyService);
 
         if (!string.IsNullOrWhiteSpace(_statusCategoryName) && string.IsNullOrWhiteSpace(_guildId))

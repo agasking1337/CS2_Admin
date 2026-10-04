@@ -17,13 +17,16 @@ public class DiscordGatewayClient
     private string? _sessionId;
 
     public delegate Task InteractionCallback(JsonElement interactionData);
+    public delegate Task GuildMemberRemovedCallback(ulong discordId, string guildId);
     private readonly InteractionCallback _onInteraction;
+    private readonly GuildMemberRemovedCallback _onGuildMemberRemoved;
 
-    public DiscordGatewayClient(ISwiftlyCore core, string botToken, InteractionCallback onInteraction)
+    public DiscordGatewayClient(ISwiftlyCore core, string botToken, InteractionCallback onInteraction, GuildMemberRemovedCallback onGuildMemberRemoved)
     {
         _core = core;
         _botToken = botToken;
         _onInteraction = onInteraction;
+        _onGuildMemberRemoved = onGuildMemberRemoved;
     }
 
     public void Start()
@@ -169,6 +172,18 @@ public class DiscordGatewayClient
                             var interactionData = dElement.Clone();
                             _ = Task.Run(() => _onInteraction(interactionData), cancellationToken);
                         }
+                        else if (eventName == "GUILD_MEMBER_REMOVE" && root.TryGetProperty("d", out var memberData))
+                        {
+                            if (memberData.TryGetProperty("user", out var userElement)
+                                && userElement.TryGetProperty("id", out var idElement)
+                                && idElement.ValueKind == JsonValueKind.String
+                                && ulong.TryParse(idElement.GetString(), out var discordId)
+                                && memberData.TryGetProperty("guild_id", out var guildIdElement)
+                                && guildIdElement.ValueKind == JsonValueKind.String)
+                            {
+                                _ = Task.Run(() => _onGuildMemberRemoved(discordId, guildIdElement.GetString() ?? string.Empty), cancellationToken);
+                            }
+                        }
                     }
                     break;
                 }
@@ -241,7 +256,7 @@ public class DiscordGatewayClient
             d = new
             {
                 token = _botToken,
-                intents = 1,
+                intents = 1 | (1 << 1), // GUILDS | GUILD_MEMBERS
                 properties = new
                 {
                     os = Environment.OSVersion.Platform.ToString(),
