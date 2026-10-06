@@ -162,6 +162,9 @@ public class EventRegistrar
         if (IsSilentCommand(text))
             return HookResult.Stop;
 
+        if (TryHandleAdminChat(player, text))
+            return HookResult.Stop;
+
         if (!string.IsNullOrWhiteSpace(text))
             _ = _discord?.SendChatNotificationAsync(player, text, teamOnly);
 
@@ -246,6 +249,61 @@ public class EventRegistrar
         }
 
         return HookResult.Continue;
+    }
+
+    private bool TryHandleAdminChat(IPlayer player, string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return false;
+
+        var isGlobal = text.StartsWith("u@", StringComparison.OrdinalIgnoreCase);
+        var isTeam = !isGlobal && text.StartsWith('@');
+        if (!isGlobal && !isTeam)
+            return false;
+
+        var permission = isGlobal ? _permissions.AdminChat : _permissions.AdminChatTeam;
+        if (!CanUseAdminChat(player.SteamID, permission))
+            return false;
+
+        var message = (isGlobal ? text[2..] : text[1..]).Trim();
+        if (message.Length == 0)
+        {
+            player.SendChat($" \x02{LocalizerHelper.Get(_core, "prefix")}\x01 Usage: {(isGlobal ? "u@" : "@")}<message>");
+            return true;
+        }
+
+        var senderTeam = player.Controller.TeamNum;
+        var senderName = player.Controller.PlayerName ?? LocalizerHelper.Get(_core, "unknown");
+        var label = isGlobal ? "[AdminChat]" : "[TeamAdminChat]";
+        var formatted = $" \x04{label}\x01 \x10{senderName}\x01: {message}";
+
+        var delivered = 0;
+        foreach (var target in _core.PlayerManager.GetAllPlayers().Where(p => p.IsValid && !p.IsFakeClient))
+        {
+            if (!CanUseAdminChat(target.SteamID, permission))
+                continue;
+            if (isTeam && target.Controller.TeamNum != senderTeam)
+                continue;
+
+            target.SendChat(formatted);
+            delivered++;
+        }
+
+        _core.Logger.LogInformationIfEnabled("[CS2_Admin] {Channel} from {Admin} delivered to {Count} admins: {Message}",
+            label, senderName, delivered, message);
+        return true;
+    }
+
+    private bool CanUseAdminChat(ulong steamId, string permission)
+    {
+        if (!string.IsNullOrWhiteSpace(permission) && _core.Permission.PlayerHasPermission(steamId, permission))
+            return true;
+        if (!string.IsNullOrWhiteSpace(_permissions.AdminMenu) && _core.Permission.PlayerHasPermission(steamId, _permissions.AdminMenu))
+            return true;
+        if (_core.Permission.PlayerHasPermission(steamId, _permissions.AdminRoot))
+            return true;
+        return _permissions.RootBypassPermissions.Any(p =>
+            !string.IsNullOrWhiteSpace(p) && _core.Permission.PlayerHasPermission(steamId, p));
     }
 
     private bool IsSilentCommand(string text)

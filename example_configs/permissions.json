@@ -4,6 +4,8 @@
     "AdminMenu": "admin.generic",
     "AdminRoot": "admin.root",
     "Asay": "admin.generic",
+    "AdminChat": "admin.chat",
+    "AdminChatTeam": "admin.chat.team",
     "Say": "admin.generic",
     "Psay": "admin.generic",
     "Csay": "admin.generic",

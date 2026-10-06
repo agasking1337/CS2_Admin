@@ -349,6 +349,8 @@ public class PermissionsConfig
     public string AdminMenu { get; set; } = "admin.generic";
     public string AdminRoot { get; set; } = "admin.root";
     public string Asay { get; set; } = "admin.generic";
+    public string AdminChat { get; set; } = "admin.chat";
+    public string AdminChatTeam { get; set; } = "admin.chat.team";
     public string Say { get; set; } = "admin.generic";
     public string Psay { get; set; } = "admin.generic";
     public string Csay { get; set; } = "admin.generic";
