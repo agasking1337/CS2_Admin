@@ -23,6 +23,7 @@ public readonly record struct DiscordVerifyOutcome(DiscordVerifyResult Result, u
 public class DiscordVerifyService
 {
     private const string PanelCustomId = "verify_open";
+    private bool _panelReposted;
 
     // 0/O ve 1/I/L gibi karışan karakterler çıkarıldı; oyuncular kodu Discord'a elle yazıyor.
     private const string CodeAlphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
@@ -218,6 +219,25 @@ public class DiscordVerifyService
 
             if (string.IsNullOrWhiteSpace(previousMessageId) && _messageStateDbManager != null)
                 previousMessageId = await _messageStateDbManager.GetMessageIdAsync($"verify:{ServerIdentity.GetServerId(_core)}:{_verifyChannelId}");
+
+            if (!_panelReposted)
+            {
+                _panelReposted = true;
+                var existing = await _restClient.FindVerifyPanelAsync(_verifyChannelId, ServerIdentity.GetServerId(_core));
+                if (!string.IsNullOrWhiteSpace(existing.MessageId))
+                    await _restClient.DeleteMessageAsync(_verifyChannelId, existing.MessageId);
+                if (!string.IsNullOrWhiteSpace(previousMessageId) && previousMessageId != existing.MessageId)
+                    await _restClient.DeleteMessageAsync(_verifyChannelId, previousMessageId);
+                previousMessageId = null;
+                _panelMessageId = null;
+                var fresh = await _restClient.SendEmbedAsync(_verifyChannelId, BuildPanelEmbed(), components: BuildPanelComponents());
+                if (string.IsNullOrWhiteSpace(fresh))
+                    return;
+                _panelMessageId = fresh;
+                if (_messageStateDbManager != null)
+                    await _messageStateDbManager.UpsertMessageIdAsync(messageKey, _verifyChannelId, fresh);
+                return;
+            }
 
             if (string.IsNullOrWhiteSpace(previousMessageId))
             {

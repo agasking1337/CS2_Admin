@@ -95,7 +95,7 @@ public class DiscordInteractionHandler
                 var modalCustomId = modalData.TryGetProperty("custom_id", out var modalCustomIdElement) ? modalCustomIdElement.GetString() : null;
                 if (modalCustomId == "verify_modal")
                 {
-                    await HandleVerifyModalSubmitAsync(id, token, data);
+                    await HandleVerifyModalSubmitAsync(id, token, applicationId, data);
                 }
             }
         }
@@ -242,46 +242,58 @@ public class DiscordInteractionHandler
 
     private async Task HandleVerifyOpenAsync(string interactionId, string interactionToken)
     {
-        if (_verifyService == null || !_verifyService.IsEnabled)
+        try
         {
-            await SendErrorAsync(interactionId, interactionToken, T("discord_verify_disabled", "Verification is currently disabled."));
-            return;
-        }
-
-        var modal = new
-        {
-            title = T("discord_verify_modal_title", "Link your Steam account"),
-            custom_id = "verify_modal",
-            components = new object[]
+            if (_verifyService == null || !_verifyService.IsEnabled)
             {
-                new
+                _core.Logger.LogWarningIfEnabled("[CS2_Admin] Discord verify button clicked but verification is disabled");
+                await SendErrorAsync(interactionId, interactionToken, T("discord_verify_disabled", "Verification is currently disabled."));
+                return;
+            }
+
+            var modal = new
+            {
+                title = T("discord_verify_modal_title", "Link your Steam account"),
+                custom_id = "verify_modal",
+                components = new object[]
                 {
-                    type = 1,
-                    components = new object[]
+                    new
                     {
-                        new
+                        type = 1,
+                        components = new object[]
                         {
-                            type = 4,
-                            custom_id = "verify_code",
-                            label = T("discord_verify_modal_code_label", "In-game verification code"),
-                            style = 1,
-                            min_length = 4,
-                            max_length = 12,
-                            required = true,
-                            placeholder = T("discord_verify_modal_code_placeholder", "e.g. A1B2C3")
+                            new
+                            {
+                                type = 4,
+                                custom_id = "verify_code",
+                                label = T("discord_verify_modal_code_label", "In-game verification code"),
+                                style = 1,
+                                min_length = 4,
+                                max_length = 12,
+                                required = true,
+                                placeholder = T("discord_verify_modal_code_placeholder", "e.g. A1B2C3")
+                            }
                         }
                     }
                 }
-            }
-        };
+            };
 
-        if (!await _restClient.RespondToInteractionAsync(interactionId, interactionToken, 9, modal))
+            if (!await _restClient.RespondToInteractionAsync(interactionId, interactionToken, 9, modal))
+            {
+                _core.Logger.LogWarningIfEnabled("[CS2_Admin] Discord verify modal response failed");
+                return;
+            }
+
+            _core.Logger.LogInformationIfEnabled("[CS2_Admin][Debug][Discord] verify modal opened interactionId={InteractionId}", interactionId);
+        }
+        catch (Exception ex)
         {
-            _core.Logger.LogWarningIfEnabled("[CS2_Admin] Discord verify modal response failed");
+            _core.Logger.LogWarningIfEnabled("[CS2_Admin] Discord verify open handler failed: {Message}", ex.Message);
+            await SendErrorAsync(interactionId, interactionToken, T("discord_verify_error", "Something went wrong. Please try again."));
         }
     }
 
-    private async Task HandleVerifyModalSubmitAsync(string interactionId, string interactionToken, JsonElement data)
+    private async Task HandleVerifyModalSubmitAsync(string interactionId, string interactionToken, string? applicationId, JsonElement data)
     {
         try
         {
@@ -291,10 +303,18 @@ public class DiscordInteractionHandler
                 return;
             }
 
+            // Discord requires an initial response within 3 seconds. The verification work below can take longer,
+            // so acknowledge the interaction immediately and edit the deferred message once the work is done.
+            if (!await _restClient.RespondToInteractionAsync(interactionId, interactionToken, 5, new { flags = 64 }))
+            {
+                _core.Logger.LogWarningIfEnabled("[CS2_Admin] Discord verify modal submit defer failed");
+                return;
+            }
+
             var user = GetInteractionUser(data);
             if (user == null || !ulong.TryParse(user.Value.UserId, out var discordId))
             {
-                await SendErrorAsync(interactionId, interactionToken, T("discord_verify_error", "Something went wrong. Please try again."));
+                await EditOriginalResponseAsync(applicationId, interactionToken, BuildEditErrorPayload(T("discord_verify_error", "Something went wrong. Please try again.")));
                 return;
             }
 
@@ -314,12 +334,12 @@ public class DiscordInteractionHandler
                 _ => T("discord_verify_invalid_code", "❌ Invalid or expired code. Use `!verify` in-game to get a new one.")
             };
 
-            await _restClient.RespondToInteractionAsync(interactionId, interactionToken, 4, new { content = message, flags = 64 });
+            await EditOriginalResponseAsync(applicationId, interactionToken, new { content = message });
         }
         catch (Exception ex)
         {
             _core.Logger.LogWarningIfEnabled("[CS2_Admin] Error in verify modal submit: {Message}", ex.Message);
-            await SendErrorAsync(interactionId, interactionToken, T("discord_verify_error", "Something went wrong. Please try again."));
+            await EditOriginalResponseAsync(applicationId, interactionToken, BuildEditErrorPayload(T("discord_verify_error", "Something went wrong. Please try again.")));
         }
     }
 

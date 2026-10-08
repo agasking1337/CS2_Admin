@@ -23,6 +23,7 @@ public class DiscordGatewayClient
     private volatile bool _heartbeatAcked = true;
     private volatile bool _ready;
     private volatile bool _fatalClose;
+    private volatile bool _useMembersIntent = true;
 
     public delegate Task InteractionCallback(JsonElement interactionData);
     public delegate Task GuildMemberRemovedCallback(ulong discordId, string guildId);
@@ -156,7 +157,15 @@ public class DiscordGatewayClient
                 var code = (int?)result.CloseStatus ?? 0;
                 _core.Logger.LogWarningIfEnabled("[CS2_Admin] Discord gateway closed by server code={Code} reason={Reason}", code, result.CloseStatusDescription ?? string.Empty);
 
-                if (code is 4004 or 4010 or 4011 or 4012 or 4013 or 4014)
+                if (code == 4014 && _useMembersIntent)
+                {
+                    _useMembersIntent = false;
+                    _sessionId = null;
+                    _sequence = null;
+                    _resumeGatewayUrl = null;
+                    _core.Logger.LogErrorIfEnabled("[CS2_Admin] Discord gateway rejected the privileged GUILD_MEMBERS intent. Enable 'Server Members Intent' in the Discord Developer Portal (Bot tab) to auto-unlink members who leave. Retrying without it so buttons keep working.");
+                }
+                else if (code is 4004 or 4010 or 4011 or 4012 or 4013 or 4014)
                 {
                     _fatalClose = true;
                 }
@@ -369,7 +378,7 @@ public class DiscordGatewayClient
             d = new
             {
                 token = _botToken,
-                intents = 1 | (1 << 1), // GUILDS | GUILD_MEMBERS
+                intents = _useMembersIntent ? 1 | (1 << 1) : 1, // GUILDS | GUILD_MEMBERS (privileged)
                 properties = new
                 {
                     os = Environment.OSVersion.Platform.ToString(),
