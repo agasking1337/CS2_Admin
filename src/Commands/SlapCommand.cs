@@ -95,7 +95,7 @@ public class SlapCommand : CommandBase
             (float)Random.Shared.NextInt64(50, 230) * (Random.Shared.NextDouble() < 0.5 ? -1f : 1f),
             Random.Shared.NextInt64(100, 300));
 
-        pawn.AbsVelocity = velocity;
+        pawn.Teleport(null, null, velocity);
     }
 }
 
