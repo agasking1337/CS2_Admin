@@ -20,11 +20,11 @@ public class PlayerIpDbManager
         {
             using var connection = _core.Database.GetConnection("mysql_detailed");
             MigrationRunner.RunMigrations(connection);
-            _core.Logger.LogInformationIfEnabled("[CS2_Admin] Player IP database initialized successfully");
+            _core.Logger.LogInformationIfEnabled("Player IP database initialized successfully");
         }
         catch (Exception ex)
         {
-            _core.Logger.LogWarningIfEnabled("[CS2_Admin] Player IP database initialization warning: {Message}", ex.Message);
+            _core.Logger.LogWarningIfEnabled("Player IP database initialization warning: {Message}", ex.Message);
         }
     }
 
@@ -95,7 +95,7 @@ public class PlayerIpDbManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error upserting player ip: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error upserting player ip: {Message}", ex.Message);
         }
     }
 
@@ -120,7 +120,7 @@ public class PlayerIpDbManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error loading player ip: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error loading player ip: {Message}", ex.Message);
             return null;
         }
     }
@@ -167,7 +167,7 @@ public class PlayerIpDbManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error loading known ips: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error loading known ips: {Message}", ex.Message);
             return [];
         }
     }
@@ -211,7 +211,7 @@ public class PlayerIpDbManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error finding accounts by ip: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error finding accounts by ip: {Message}", ex.Message);
             return [];
         }
     }

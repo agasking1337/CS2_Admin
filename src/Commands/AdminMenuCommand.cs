@@ -49,7 +49,7 @@ public class AdminMenuCommand : CommandBase
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] AdminMenu command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "AdminMenu command failed");
         }
     }
 

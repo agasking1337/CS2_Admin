@@ -34,11 +34,11 @@ public class WarnManager
         {
             using var connection = _core.Database.GetConnection("mysql_detailed");
             MigrationRunner.RunMigrations(connection);
-            _core.Logger.LogInformationIfEnabled("[CS2_Admin] Warn database initialized successfully");
+            _core.Logger.LogInformationIfEnabled("Warn database initialized successfully");
         }
         catch (Exception ex)
         {
-            _core.Logger.LogWarningIfEnabled("[CS2_Admin] Warn database initialization warning: {Message}", ex.Message);
+            _core.Logger.LogWarningIfEnabled("Warn database initialization warning: {Message}", ex.Message);
         }
     }
 
@@ -70,7 +70,7 @@ public class WarnManager
             }
             catch (Exception ex)
             {
-                _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error adding warn: {Message}", ex.Message);
+                _core.Logger.LogErrorIfEnabled("Error adding warn: {Message}", ex.Message);
                 return false;
             }
         });
@@ -108,7 +108,7 @@ public class WarnManager
             }
             catch (Exception ex)
             {
-                _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error removing warn: {Message}", ex.Message);
+                _core.Logger.LogErrorIfEnabled("Error removing warn: {Message}", ex.Message);
                 return false;
             }
         });
@@ -157,7 +157,7 @@ public class WarnManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error checking warn: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error checking warn: {Message}", ex.Message);
             return null;
         }
     }
@@ -174,7 +174,7 @@ public class WarnManager
             }
             catch (Exception ex)
             {
-                _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error getting total warns: {Message}", ex.Message);
+                _core.Logger.LogErrorIfEnabled("Error getting total warns: {Message}", ex.Message);
                 return 0;
             }
         });
@@ -192,7 +192,7 @@ public class WarnManager
             }
             catch (Exception ex)
             {
-                _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error getting active warn count: {Message}", ex.Message);
+                _core.Logger.LogErrorIfEnabled("Error getting active warn count: {Message}", ex.Message);
                 return 0;
             }
         });
@@ -223,7 +223,7 @@ public class WarnManager
             }
             catch (Exception ex)
             {
-                _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error getting warn history: {Message}", ex.Message);
+                _core.Logger.LogErrorIfEnabled("Error getting warn history: {Message}", ex.Message);
                 return new List<Warn>();
             }
         });
@@ -258,13 +258,13 @@ public class WarnManager
 
                 if (cleaned > 0)
                 {
-                    _core.Logger.LogInformationIfEnabled("[CS2_Admin] Marked {Count} warns as expired", cleaned);
+                    _core.Logger.LogInformationIfEnabled("Marked {Count} warns as expired", cleaned);
                     _warnCache.Clear();
                 }
             }
             catch (Exception ex)
             {
-                _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error cleaning expired warns: {Message}", ex.Message);
+                _core.Logger.LogErrorIfEnabled("Error cleaning expired warns: {Message}", ex.Message);
             }
         });
     }

@@ -85,7 +85,7 @@ public class NoClipCommand : CommandBase
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] NoClip command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "NoClip command failed");
         }
     }
 }

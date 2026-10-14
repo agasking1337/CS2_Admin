@@ -67,7 +67,7 @@ public class GiveCommand : CommandBase
 
                 BroadcastNotification(adminName, "give_notification", FormatTargetName(targets), itemName);
 
-                Core.Logger.LogInformation("[CS2_Admin] {Admin} gave {ItemName} to {Count} player(s)", adminName, itemName, givenCount);
+                Core.Logger.LogInformation("{Admin} gave {ItemName} to {Count} player(s)", adminName, itemName, givenCount);
             });
     }
 

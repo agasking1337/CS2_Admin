@@ -24,11 +24,11 @@ public class GroupDbManager
         {
             using var connection = _core.Database.GetConnection("mysql_detailed");
             MigrationRunner.RunMigrations(connection);
-            _core.Logger.LogInformationIfEnabled("[CS2_Admin] Group database initialized successfully");
+            _core.Logger.LogInformationIfEnabled("Group database initialized successfully");
         }
         catch (Exception ex)
         {
-            _core.Logger.LogWarningIfEnabled("[CS2_Admin] Group database initialization warning: {Message}", ex.Message);
+            _core.Logger.LogWarningIfEnabled("Group database initialization warning: {Message}", ex.Message);
         }
     }
 
@@ -59,7 +59,7 @@ public class GroupDbManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error getting group: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error getting group: {Message}", ex.Message);
             return null;
         }
     }
@@ -79,7 +79,7 @@ public class GroupDbManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error getting groups: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error getting groups: {Message}", ex.Message);
             return [];
         }
     }
@@ -125,7 +125,7 @@ public class GroupDbManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error adding/updating group: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error adding/updating group: {Message}", ex.Message);
             return false;
         }
     }
@@ -154,7 +154,7 @@ public class GroupDbManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error removing group: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error removing group: {Message}", ex.Message);
             return false;
         }
     }

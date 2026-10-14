@@ -39,11 +39,11 @@ public class PlayerSessionManager
         {
             using var connection = _core.Database.GetConnection("mysql_detailed");
             MigrationRunner.RunMigrations(connection);
-            _core.Logger.LogInformationIfEnabled("[CS2_Admin] Player session database initialized successfully");
+            _core.Logger.LogInformationIfEnabled("Player session database initialized successfully");
         }
         catch (Exception ex)
         {
-            _core.Logger.LogWarningIfEnabled("[CS2_Admin] Player session database initialization warning: {Message}", ex.Message);
+            _core.Logger.LogWarningIfEnabled("Player session database initialization warning: {Message}", ex.Message);
         }
     }
 
@@ -94,7 +94,7 @@ public class PlayerSessionManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error reconciling player sessions: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error reconciling player sessions: {Message}", ex.Message);
         }
     }
 
@@ -144,7 +144,7 @@ public class PlayerSessionManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error opening player session: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error opening player session: {Message}", ex.Message);
         }
     }
 
@@ -176,7 +176,7 @@ public class PlayerSessionManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error touching player session: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error touching player session: {Message}", ex.Message);
         }
     }
 
@@ -208,7 +208,7 @@ public class PlayerSessionManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error closing player session: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error closing player session: {Message}", ex.Message);
         }
     }
 
@@ -250,7 +250,7 @@ public class PlayerSessionManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error getting top player playtime list: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error getting top player playtime list: {Message}", ex.Message);
             return [];
         }
     }
@@ -291,7 +291,7 @@ public class PlayerSessionManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error getting global top player playtime list: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error getting global top player playtime list: {Message}", ex.Message);
             return [];
         }
     }
@@ -326,7 +326,7 @@ public class PlayerSessionManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error getting recent disconnected players: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error getting recent disconnected players: {Message}", ex.Message);
             return [];
         }
     }

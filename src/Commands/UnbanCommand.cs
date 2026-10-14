@@ -76,7 +76,7 @@ public class UnbanCommand : BanCommandBase
                 targetIp = result.KnownIps;
 
                 success = affectedRows > 0;
-                Core.Logger.LogInformationIfEnabled("[CS2_Admin][Debug] unban requested steamid={SteamId} affected={AffectedRows}", steamId, affectedRows);
+                Core.Logger.LogInformationIfEnabled("[Debug] unban requested steamid={SteamId} affected={AffectedRows}", steamId, affectedRows);
                 if (success)
                 {
                     await _sanctionStateService.RefreshAsync(steamId, null);
@@ -87,7 +87,7 @@ public class UnbanCommand : BanCommandBase
                 affectedRows = await _banManager.UnbanIpWithCountAsync(normalizedIp, reason);
                 success = affectedRows > 0;
                 targetIp = normalizedIp;
-                Core.Logger.LogInformationIfEnabled("[CS2_Admin][Debug] unban requested ip={Ip} affected={AffectedRows}", normalizedIp, affectedRows);
+                Core.Logger.LogInformationIfEnabled("[Debug] unban requested ip={Ip} affected={AffectedRows}", normalizedIp, affectedRows);
             }
             else
             {
@@ -143,7 +143,7 @@ public class UnbanCommand : BanCommandBase
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] Unban command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "Unban command failed");
         }
     }
 

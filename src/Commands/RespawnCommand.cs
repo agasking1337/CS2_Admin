@@ -69,7 +69,7 @@ public class RespawnCommand : CommandBase
 
                 var targetSteamIds = string.Join(",", targets.Select(t => t.SteamID));
                 _ = AdminLogManager.AddLogAsync("respawn", adminName, ctx.Sender?.SteamID ?? 0, null, null, $"targets={targetSteamIds};count={targets.Count}");
-                Core.Logger.LogInformationIfEnabled("[CS2_Admin] {Admin} respawned {Count} player(s)", adminName, targets.Count);
+                Core.Logger.LogInformationIfEnabled("{Admin} respawned {Count} player(s)", adminName, targets.Count);
             });
     }
 }

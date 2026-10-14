@@ -62,7 +62,7 @@ public class CallAdminCommand : CommandBase
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] CallAdmin command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "CallAdmin command failed");
         }
     }
 }

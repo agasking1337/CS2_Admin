@@ -58,7 +58,7 @@ public class DiscordNotificationService
     {
         if (player == null || !player.IsValid || player.IsFakeClient)
         {
-            _core.Logger.LogInformationIfEnabled("[CS2_Admin][Debug][DiscordConnect] skipped reason=invalid_or_fake");
+            _core.Logger.LogInformationIfEnabled("[Debug][DiscordConnect] skipped reason=invalid_or_fake");
             return;
         }
 
@@ -81,7 +81,7 @@ public class DiscordNotificationService
 
         if (string.IsNullOrWhiteSpace(channelId))
         {
-            _core.Logger.LogInformationIfEnabled("[CS2_Admin][DiscordConnect] Skipped sending to Discord (Reason: Connect channel not set) | SteamID: {SteamId}", steamId);
+            _core.Logger.LogInformationIfEnabled("[DiscordConnect] Skipped sending to Discord (Reason: Connect channel not set) | SteamID: {SteamId}", steamId);
             return;
         }
 
@@ -127,7 +127,7 @@ public class DiscordNotificationService
         }
         catch (Exception ex)
         {
-            _core.Logger.LogWarningIfEnabled("[CS2_Admin] Error sending connect notification: {Message}", ex.Message);
+            _core.Logger.LogWarningIfEnabled("Error sending connect notification: {Message}", ex.Message);
         }
     }
 
@@ -143,7 +143,7 @@ public class DiscordNotificationService
 
         if (string.IsNullOrWhiteSpace(channelId))
         {
-            _core.Logger.LogInformationIfEnabled("[CS2_Admin][DiscordDisconnect] Skipped sending to Discord (Reason: Connect channel not set) | SteamID: {SteamId}", steamId);
+            _core.Logger.LogInformationIfEnabled("[DiscordDisconnect] Skipped sending to Discord (Reason: Connect channel not set) | SteamID: {SteamId}", steamId);
             return;
         }
 
@@ -186,7 +186,7 @@ public class DiscordNotificationService
         }
         catch (Exception ex)
         {
-            _core.Logger.LogWarningIfEnabled("[CS2_Admin] Error sending disconnect notification: {Message}", ex.Message);
+            _core.Logger.LogWarningIfEnabled("Error sending disconnect notification: {Message}", ex.Message);
         }
     }
 
@@ -194,14 +194,14 @@ public class DiscordNotificationService
     {
         if (player == null || !player.IsValid || player.IsFakeClient)
         {
-            _core.Logger.LogInformationIfEnabled("[CS2_Admin][DiscordChat] Skipped sending to Discord (Reason: Invalid or Fake Client)");
+            _core.Logger.LogInformationIfEnabled("[DiscordChat] Skipped sending to Discord (Reason: Invalid or Fake Client)");
             return;
         }
 
         var trimmed = message.Trim();
         if (string.IsNullOrWhiteSpace(trimmed))
         {
-            _core.Logger.LogInformationIfEnabled("[CS2_Admin][DiscordChat] Skipped sending to Discord (Reason: Empty message) | SteamID: {SteamId}", player.SteamID);
+            _core.Logger.LogInformationIfEnabled("[DiscordChat] Skipped sending to Discord (Reason: Empty message) | SteamID: {SteamId}", player.SteamID);
             return;
         }
 
@@ -210,7 +210,7 @@ public class DiscordNotificationService
             var firstToken = trimmed.Split(' ', 2)[0].TrimStart('!', '/');
             if (!string.IsNullOrEmpty(firstToken) && _commandAliases.Contains(firstToken))
             {
-                _core.Logger.LogInformationIfEnabled("[CS2_Admin][DiscordChat] Skipped sending to Discord (Reason: Text is a plugin command) | SteamID: {SteamId} | Command: {Text}", player.SteamID, trimmed);
+                _core.Logger.LogInformationIfEnabled("[DiscordChat] Skipped sending to Discord (Reason: Text is a plugin command) | SteamID: {SteamId} | Command: {Text}", player.SteamID, trimmed);
                 return;
             }
         }
@@ -225,7 +225,7 @@ public class DiscordNotificationService
 
         if (string.IsNullOrWhiteSpace(channelId))
         {
-            _core.Logger.LogInformationIfEnabled("[CS2_Admin][DiscordChat] Skipped sending to Discord (Reason: Chat channel not set) | SteamID: {SteamId}", player.SteamID);
+            _core.Logger.LogInformationIfEnabled("[DiscordChat] Skipped sending to Discord (Reason: Chat channel not set) | SteamID: {SteamId}", player.SteamID);
             return;
         }
 
@@ -248,7 +248,7 @@ public class DiscordNotificationService
         }
         catch (Exception ex)
         {
-            _core.Logger.LogWarningIfEnabled("[CS2_Admin] Error sending chat notification: {Message}", ex.Message);
+            _core.Logger.LogWarningIfEnabled("Error sending chat notification: {Message}", ex.Message);
         }
     }
 
@@ -267,7 +267,7 @@ public class DiscordNotificationService
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error sending ban notification: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error sending ban notification: {Message}", ex.Message);
         }
     }
 
@@ -285,7 +285,7 @@ public class DiscordNotificationService
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error sending unban notification: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error sending unban notification: {Message}", ex.Message);
         }
     }
 
@@ -304,7 +304,7 @@ public class DiscordNotificationService
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error sending mute notification: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error sending mute notification: {Message}", ex.Message);
         }
     }
 
@@ -323,7 +323,7 @@ public class DiscordNotificationService
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error sending gag notification: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error sending gag notification: {Message}", ex.Message);
         }
     }
 
@@ -341,7 +341,7 @@ public class DiscordNotificationService
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error sending kick notification: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error sending kick notification: {Message}", ex.Message);
         }
     }
 
@@ -360,7 +360,7 @@ public class DiscordNotificationService
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error sending silence notification: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error sending silence notification: {Message}", ex.Message);
         }
     }
 
@@ -379,7 +379,7 @@ public class DiscordNotificationService
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error sending warn notification: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error sending warn notification: {Message}", ex.Message);
         }
     }
 
@@ -420,7 +420,7 @@ public class DiscordNotificationService
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error sending calladmin notification: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error sending calladmin notification: {Message}", ex.Message);
         }
     }
 
@@ -480,7 +480,7 @@ public class DiscordNotificationService
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error sending report notification: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error sending report notification: {Message}", ex.Message);
         }
     }
 
@@ -538,7 +538,7 @@ public class DiscordNotificationService
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error sending admin playtime notification: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error sending admin playtime notification: {Message}", ex.Message);
         }
     }
 
@@ -564,7 +564,7 @@ public class DiscordNotificationService
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error sending admin action notification: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error sending admin action notification: {Message}", ex.Message);
         }
     }
 
@@ -664,7 +664,7 @@ public class DiscordNotificationService
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error sending alt account alert: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error sending alt account alert: {Message}", ex.Message);
         }
     }
 

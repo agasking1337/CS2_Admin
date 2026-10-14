@@ -124,14 +124,14 @@ public sealed class UnmuteCommand : CommandBase
                     }
                 });
 
-                Core.Logger.LogInformationIfEnabled("[CS2_Admin] {Admin} unmuted {Target}. Reason: {Reason}",
+                Core.Logger.LogInformationIfEnabled("{Admin} unmuted {Target}. Reason: {Reason}",
                     adminName, target.Name, reason);
                 await AdminLogManager.AddLogAsync("unmute", adminName, adminSteamId, target.SteamId, target.IpAddress, $"reason={reason}", target.Name, target.PlayerId, reason);
             }
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] Unmute command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "Unmute command failed");
         }
     }
 

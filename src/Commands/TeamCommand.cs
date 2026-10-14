@@ -91,12 +91,12 @@ public class TeamCommand : CommandBase
                 }
 
                 _ = AdminLogManager.AddLogAsync("team", adminName, context.Sender?.SteamID ?? 0, liveTarget.SteamID, liveTarget.IPAddress, $"team={teamName}", targetName);
-                Core.Logger.LogInformationIfEnabled("[CS2_Admin] {Admin} moved {Target} to {Team}", adminName, targetName, teamName);
+                Core.Logger.LogInformationIfEnabled("{Admin} moved {Target} to {Team}", adminName, targetName, teamName);
             });
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] Team command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "Team command failed");
         }
     }
 }

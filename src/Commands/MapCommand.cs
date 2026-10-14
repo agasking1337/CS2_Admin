@@ -66,7 +66,7 @@ public class MapCommand : CommandBase
             if (!Core.Engine.IsMapValid(matchedMap))
             {
                 Reply(context, "map_not_found", matchedMap);
-                Core.Logger.LogWarningIfEnabled("[CS2_Admin] Refused map change because engine rejected map {Map}", matchedMap);
+                Core.Logger.LogWarningIfEnabled("Refused map change because engine rejected map {Map}", matchedMap);
                 return;
             }
 
@@ -97,11 +97,11 @@ public class MapCommand : CommandBase
             });
 
             _ = AdminLogManager.AddLogAsync("map", adminName, context.Sender?.SteamID ?? 0, null, null, $"map={matchedMap}");
-            Core.Logger.LogInformationIfEnabled("[CS2_Admin] {Admin} changed map to {Map}", adminName, matchedMap);
+            Core.Logger.LogInformationIfEnabled("{Admin} changed map to {Map}", adminName, matchedMap);
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] Map command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "Map command failed");
         }
     }
 }

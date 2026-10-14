@@ -71,7 +71,7 @@ public class SlapCommand : CommandBase
                     }
 
                     _ = AdminLogManager.AddLogAsync("slap", adminName, ctx.Sender?.SteamID ?? 0, liveTarget.SteamID, liveTarget.IPAddress, $"damage={damage}", liveTarget.Controller.PlayerName);
-                    Core.Logger.LogInformation("[CS2_Admin] {Admin} slapped {Target} for {Damage} damage", adminName, targetName, damage);
+                    Core.Logger.LogInformation("{Admin} slapped {Target} for {Damage} damage", adminName, targetName, damage);
                 }
             });
     }

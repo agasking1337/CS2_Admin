@@ -17,19 +17,22 @@ public class AdminManagementHandler : IAdminMenuHandler
     private readonly AdminDbManager _adminManager;
     private readonly GroupDbManager _groupManager;
     private readonly AdminLogManager _adminLogManager;
+    private readonly ChatTagConfigManager _chatTagConfigManager;
 
     public AdminManagementHandler(
         ISwiftlyCore core,
         PluginConfig config,
         AdminDbManager adminManager,
         GroupDbManager groupManager,
-        AdminLogManager adminLogManager)
+        AdminLogManager adminLogManager,
+        ChatTagConfigManager chatTagConfigManager)
     {
         _core = core;
         _config = config;
         _adminManager = adminManager;
         _groupManager = groupManager;
         _adminLogManager = adminLogManager;
+        _chatTagConfigManager = chatTagConfigManager;
     }
 
     public IMenuAPI CreateMenu(IPlayer player)
@@ -222,7 +225,8 @@ public class AdminManagementHandler : IAdminMenuHandler
             {
                 admin.SendChat($" \x02{T("prefix")}\x01 {T("addadmin_success", targetName, targetSteamId, string.Join(",", effectiveFlags))}");
                 target.SendChat($" \x02{T("prefix")}\x01 {T("addadmin_granted")}");
-                if (_config.Tags.Enabled)
+                if (_config.Tags.Enabled && _chatTagConfigManager.Config.ScoreboardEnabled &&
+                    _chatTagConfigManager.Config.Groups.ContainsKey(groupName))
                 {
                     PlayerUtils.SetScoreTagReliable(_core, target.PlayerID, groupName);
                 }

@@ -37,7 +37,7 @@ public class BeaconCommand : CommandBase
     public override void Execute(ICommandContext context)
     {
         RunTargetedFunCommand(context, CommandsConfig.Beacon, Permissions.Beacon, "beacon_usage", _adminDbManager, "Beacon",
-            includeDeadPlayers: true,
+            includeDeadPlayers: false,
             onMainThread: (ctx, args, targets, adminName) =>
             {
                 var durationSeconds = 20;
@@ -82,7 +82,7 @@ public class BeaconCommand : CommandBase
                 }
 
                 _ = AdminLogManager.AddLogAsync("beacon", adminName, ctx.Sender?.SteamID ?? 0, null, null, $"mode=on;targets={started};duration={durationSeconds}");
-                Core.Logger.LogInformation("[CS2_Admin] {Admin} started beacon for {Count} player(s)", adminName, started);
+                Core.Logger.LogInformation("{Admin} started beacon for {Count} player(s)", adminName, started);
             });
     }
 

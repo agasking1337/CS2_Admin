@@ -69,7 +69,7 @@ public class SpeedCommand : CommandBase
                     }
                     catch (Exception ex)
                     {
-                        Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] VelocityModifier set failed for {SteamId}", target.SteamID);
+                        Core.Logger.LogErrorIfEnabled(ex, "VelocityModifier set failed for {SteamId}", target.SteamID);
                     }
 
                     applied++;
@@ -89,7 +89,7 @@ public class SpeedCommand : CommandBase
                 BroadcastNotification(adminName, "speed_notification", targetLabel, multiplier.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture));
 
                 _ = AdminLogManager.AddLogAsync("speed", adminName, ctx.Sender?.SteamID ?? 0, null, null, $"targets={applied};multiplier={multiplier.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)}");
-                Core.Logger.LogInformationIfEnabled("[CS2_Admin] {Admin} set speed of {Count} player(s) to {Multiplier}", adminName, applied, multiplier);
+                Core.Logger.LogInformationIfEnabled("{Admin} set speed of {Count} player(s) to {Multiplier}", adminName, applied, multiplier);
             });
     }
 
@@ -114,7 +114,7 @@ public class SpeedCommand : CommandBase
             }
             catch (Exception ex)
             {
-                Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] VelocityModifier enforcer failed for {SteamId}", steamId);
+                Core.Logger.LogErrorIfEnabled(ex, "VelocityModifier enforcer failed for {SteamId}", steamId);
             }
 
             Core.Scheduler.NextTick(Enforce);

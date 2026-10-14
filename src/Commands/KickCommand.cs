@@ -89,12 +89,12 @@ public class KickCommand : CommandBase
             });
 
             _ = AdminLogManager.AddLogAsync("kick", adminName, context.Sender?.SteamID ?? 0, targetSteamId, target.IPAddress, $"reason={reason}", targetName, target.PlayerID, reason);
-            Core.Logger.LogInformationIfEnabled("[CS2_Admin] {Admin} kicked {Target}. Reason: {Reason}",
+            Core.Logger.LogInformationIfEnabled("{Admin} kicked {Target}. Reason: {Reason}",
                 adminName, targetName, reason);
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] Kick command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "Kick command failed");
         }
     }
 }

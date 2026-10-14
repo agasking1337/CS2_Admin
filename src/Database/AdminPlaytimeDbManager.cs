@@ -25,11 +25,11 @@ public class AdminPlaytimeDbManager
         {
             using var connection = _core.Database.GetConnection("mysql_detailed");
             MigrationRunner.RunMigrations(connection);
-            _core.Logger.LogInformationIfEnabled("[CS2_Admin] Admin playtime database initialized successfully");
+            _core.Logger.LogInformationIfEnabled("Admin playtime database initialized successfully");
         }
         catch (Exception ex)
         {
-            _core.Logger.LogWarningIfEnabled("[CS2_Admin] Admin playtime database initialization warning: {Message}", ex.Message);
+            _core.Logger.LogWarningIfEnabled("Admin playtime database initialization warning: {Message}", ex.Message);
         }
     }
 
@@ -78,7 +78,7 @@ public class AdminPlaytimeDbManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error tracking admin playtime: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error tracking admin playtime: {Message}", ex.Message);
         }
     }
 
@@ -98,7 +98,7 @@ public class AdminPlaytimeDbManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error getting admin playtime top list: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error getting admin playtime top list: {Message}", ex.Message);
             return [];
         }
     }
@@ -116,7 +116,7 @@ public class AdminPlaytimeDbManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error resetting admin playtime: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error resetting admin playtime: {Message}", ex.Message);
         }
     }
 

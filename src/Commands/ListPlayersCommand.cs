@@ -125,7 +125,7 @@ public class ListPlayersCommand : CommandBase
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] ListPlayers command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "ListPlayers command failed");
         }
     }
 

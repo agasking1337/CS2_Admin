@@ -28,7 +28,8 @@ public class AdminMenuManager
         GroupDbManager groupDbManager,
         AdminLogManager adminLogManager,
         AdminPlaytimeDbManager adminPlaytimeDbManager,
-        TagDbManager tagDbManager)
+        TagDbManager tagDbManager,
+        ChatTagConfigManager chatTagConfigManager)
     {
         _core = core;
         _config = config;
@@ -40,7 +41,7 @@ public class AdminMenuManager
         // Register handlers
         RegisterHandler("server_management", new ServerManagementHandler(_core, _config));
         RegisterHandler("player_management", new PlayerManagementHandler(_core, _config, _warnManager));
-        RegisterHandler("admin_management", new AdminManagementHandler(_core, _config, adminDbManager, groupDbManager, adminLogManager));
+        RegisterHandler("admin_management", new AdminManagementHandler(_core, _config, adminDbManager, groupDbManager, adminLogManager, chatTagConfigManager));
         RegisterHandler("fun_commands", new FunCommandsMenuHandler(_core, _config));
     }
 

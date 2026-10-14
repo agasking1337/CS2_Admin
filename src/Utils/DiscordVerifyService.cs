@@ -287,7 +287,7 @@ public class DiscordVerifyService
         }
         catch (Exception ex)
         {
-            _core.Logger.LogWarningIfEnabled("[CS2_Admin] Error publishing verify panel: {Message}", ex.Message);
+            _core.Logger.LogWarningIfEnabled("Error publishing verify panel: {Message}", ex.Message);
         }
         finally
         {

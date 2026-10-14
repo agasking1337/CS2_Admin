@@ -63,7 +63,7 @@ public class WhoCommand : CommandBase
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] Who command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "Who command failed");
         }
     }
 

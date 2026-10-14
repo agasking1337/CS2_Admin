@@ -24,7 +24,7 @@ public class DiscordLinkDbManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogWarningIfEnabled("[CS2_Admin] Discord link initialization warning: {Message}", ex.Message);
+            _core.Logger.LogWarningIfEnabled("Discord link initialization warning: {Message}", ex.Message);
         }
 
         return Task.CompletedTask;
@@ -40,7 +40,7 @@ public class DiscordLinkDbManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error reading discord link by steam: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error reading discord link by steam: {Message}", ex.Message);
             return Task.FromResult<DiscordLink?>(null);
         }
     }
@@ -55,7 +55,7 @@ public class DiscordLinkDbManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error reading discord link by discord id: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error reading discord link by discord id: {Message}", ex.Message);
             return Task.FromResult<DiscordLink?>(null);
         }
     }
@@ -88,7 +88,7 @@ public class DiscordLinkDbManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error writing discord link: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error writing discord link: {Message}", ex.Message);
             return Task.FromResult(false);
         }
     }
@@ -103,7 +103,7 @@ public class DiscordLinkDbManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error deleting discord link: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error deleting discord link: {Message}", ex.Message);
             return Task.FromResult(false);
         }
     }
@@ -118,7 +118,7 @@ public class DiscordLinkDbManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error deleting discord link: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error deleting discord link: {Message}", ex.Message);
             return Task.FromResult(false);
         }
     }

@@ -39,11 +39,11 @@ public class AdminDbManager
         {
             using var connection = _core.Database.GetConnection("mysql_detailed");
             MigrationRunner.RunMigrations(connection);
-            _core.Logger.LogInformationIfEnabled("[CS2_Admin] Admin database initialized successfully");
+            _core.Logger.LogInformationIfEnabled("Admin database initialized successfully");
         }
         catch (Exception ex)
         {
-            _core.Logger.LogWarningIfEnabled("[CS2_Admin] Admin database initialization warning: {Message}", ex.Message);
+            _core.Logger.LogWarningIfEnabled("Admin database initialization warning: {Message}", ex.Message);
         }
     }
 
@@ -62,7 +62,7 @@ public class AdminDbManager
             var groupsValidation = await ValidateGroupsAsync(groups);
             if (!groupsValidation.IsValid)
             {
-                _core.Logger.LogWarningIfEnabled("[CS2_Admin] AddAdmin rejected for {SteamId}: invalid groups '{Groups}'", steamId, groups);
+                _core.Logger.LogWarningIfEnabled("AddAdmin rejected for {SteamId}: invalid groups '{Groups}'", steamId, groups);
                 return false;
             }
 
@@ -112,7 +112,7 @@ public class AdminDbManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error adding admin: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error adding admin: {Message}", ex.Message);
             return false;
         }
     }
@@ -175,7 +175,7 @@ public class AdminDbManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error editing admin: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error editing admin: {Message}", ex.Message);
             return false;
         }
     }
@@ -197,7 +197,7 @@ public class AdminDbManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error removing admin: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error removing admin: {Message}", ex.Message);
             return false;
         }
     }
@@ -236,7 +236,7 @@ public class AdminDbManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error getting admin: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error getting admin: {Message}", ex.Message);
             return null;
         }
     }
@@ -259,7 +259,7 @@ public class AdminDbManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error getting all admins: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error getting all admins: {Message}", ex.Message);
             return [];
         }
     }
@@ -344,13 +344,13 @@ public class AdminDbManager
 
             if (cleaned > 0)
             {
-                _core.Logger.LogInformationIfEnabled("[CS2_Admin] Removed {Count} expired admins", cleaned);
+                _core.Logger.LogInformationIfEnabled("Removed {Count} expired admins", cleaned);
                 _adminCache.Clear();
             }
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error cleaning expired admins: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error cleaning expired admins: {Message}", ex.Message);
         }
     }
 

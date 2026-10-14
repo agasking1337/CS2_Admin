@@ -25,7 +25,7 @@ public class ServerInfoDbManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogWarningIfEnabled("[CS2_Admin] Server info database initialization warning: {Message}", ex.Message);
+            _core.Logger.LogWarningIfEnabled("Server info database initialization warning: {Message}", ex.Message);
         }
     }
 
@@ -56,7 +56,7 @@ public class ServerInfoDbManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error upserting server info: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error upserting server info: {Message}", ex.Message);
         }
     }
 }

@@ -33,7 +33,7 @@ public class ResizeCommand : CommandBase
     public override void Execute(ICommandContext context)
     {
         RunTargetedFunCommand(context, CommandsConfig.Resize, Permissions.Resize, "resize_usage", _adminDbManager, "Resize",
-            includeDeadPlayers: true,
+            includeDeadPlayers: false,
             minArgs: 2,
             onMainThread: (ctx, args, targets, adminName) =>
             {
@@ -73,7 +73,7 @@ public class ResizeCommand : CommandBase
                 BroadcastNotification(adminName, "resize_notification", targetLabel, scaleStr);
 
                 _ = AdminLogManager.AddLogAsync("resize", adminName, ctx.Sender?.SteamID ?? 0, null, null, $"targets={applied};scale={scaleStr}");
-                Core.Logger.LogInformationIfEnabled("[CS2_Admin] {Admin} resized {Count} player(s) to {Scale}", adminName, applied, scale);
+                Core.Logger.LogInformationIfEnabled("{Admin} resized {Count} player(s) to {Scale}", adminName, applied, scale);
             });
     }
 
@@ -102,7 +102,7 @@ public class ResizeCommand : CommandBase
             }
             catch (Exception ex)
             {
-                Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] TrySetPlayerScale reflection fallback failed for {SteamId}", player.SteamID);
+                Core.Logger.LogErrorIfEnabled(ex, "TrySetPlayerScale reflection fallback failed for {SteamId}", player.SteamID);
             }
         }
 

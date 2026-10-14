@@ -161,8 +161,9 @@ public abstract class CommandBase : ICommand
             {
                 if (string.IsNullOrWhiteSpace(line)) continue;
                 var stripped = StripChatFormatting(line);
-                Core.Logger.LogInformation("[{Prefix}] {Message}", prefix, stripped);
-                Console.WriteLine($"[{prefix}] {stripped}");
+                // Server console already decorates ILogger output with the plugin name.
+                // Emit one user-configured prefix instead of two nested prefixes.
+                Console.WriteLine($"{prefix} {stripped}");
             }
         });
     }
@@ -269,6 +270,8 @@ public abstract class CommandBase : ICommand
             }
 
             var targets = PlayerUtils.FindPlayersByTarget(Core, args[0], includeDeadPlayers: includeDeadPlayers, caller: context.Sender);
+            if (!includeDeadPlayers)
+                targets = targets.Where(p => p.Controller.TeamNum is 2 or 3 && p.PlayerPawn?.IsValid == true && p.PlayerPawn.Health > 0).ToList();
             if (targetFilter != null)
                 targets = targets.Where(targetFilter).ToList();
 
@@ -288,11 +291,18 @@ public abstract class CommandBase : ICommand
 
             var adminName = context.Sender?.Controller.PlayerName ?? L("console_name");
 
-            Core.Scheduler.NextTick(() => onMainThread(context, args, targets, adminName));
+            Core.Scheduler.NextTick(() =>
+            {
+                // Await may have crossed player disconnect/death or team change.
+                var liveTargets = targets.Where(p => p.IsValid && (includeDeadPlayers ||
+                    (p.Controller.TeamNum is 2 or 3 && p.PlayerPawn?.IsValid == true && p.PlayerPawn.Health > 0))).ToList();
+                if (liveTargets.Count == 0) { Reply(context, notFoundKey); return; }
+                onMainThread(context, args, liveTargets, adminName);
+            });
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] {Command} command failed", logLabel);
+            Core.Logger.LogErrorIfEnabled(ex, "{Command} command failed", logLabel);
         }
     }
 
@@ -333,7 +343,7 @@ public abstract class CommandBase : ICommand
         }
         catch (Exception ex)
         {
-            Core.Logger.LogWarningIfEnabled("[CS2_Admin] Auto adminreload failed: {Message}", ex.Message);
+            Core.Logger.LogWarningIfEnabled("Auto adminreload failed: {Message}", ex.Message);
         }
     }
 
@@ -357,7 +367,7 @@ public abstract class CommandBase : ICommand
         }
         catch (Exception ex)
         {
-            Core.Logger.LogWarningIfEnabled("[CS2_Admin] Failed to reload permissions.json: {Message}", ex.Message);
+            Core.Logger.LogWarningIfEnabled("Failed to reload permissions.json: {Message}", ex.Message);
         }
     }
 
@@ -370,25 +380,6 @@ public abstract class CommandBase : ICommand
         var admins = await AdminDbManager.GetAllAdminsAsync();
         var adminsBySteamId = admins.ToDictionary(a => a.SteamId, a => a);
 
-        var managedPermissions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var group in groups)
-        {
-            foreach (var flag in SplitPermissions(group.Flags))
-                managedPermissions.Add(flag);
-        }
-
-        foreach (var admin in admins)
-        {
-            foreach (var flag in SplitPermissions(admin.Flags))
-                managedPermissions.Add(flag);
-        }
-
-        foreach (var bypassPermission in Permissions.RootBypassPermissions)
-        {
-            if (!string.IsNullOrWhiteSpace(bypassPermission))
-                managedPermissions.Add(bypassPermission.Trim());
-        }
-
         var onlinePlayers = Core.PlayerManager
             .GetAllPlayers()
             .Where(p => p.IsValid)
@@ -399,31 +390,14 @@ public abstract class CommandBase : ICommand
 
         foreach (var snapshot in onlinePlayers)
         {
-            foreach (var permission in managedPermissions)
-                Core.Permission.RemovePermission(snapshot.SteamID, permission);
-
             var effectiveFlags = await AdminDbManager.GetEffectiveFlagsAsync(snapshot.SteamID);
-            var hasRoot = false;
-
-            foreach (var flag in effectiveFlags)
-            {
-                if (string.IsNullOrWhiteSpace(flag))
-                    continue;
-
-                var normalizedFlag = flag.Trim();
-                Core.Permission.AddPermission(snapshot.SteamID, normalizedFlag);
-                if (string.Equals(normalizedFlag, Permissions.AdminRoot, StringComparison.OrdinalIgnoreCase))
-                    hasRoot = true;
-            }
-
+            var hasRoot = effectiveFlags.Any(flag =>
+                string.Equals(flag?.Trim(), Permissions.AdminRoot, StringComparison.OrdinalIgnoreCase));
+            var flagsToGrant = effectiveFlags.Where(flag => !string.IsNullOrWhiteSpace(flag))
+                .Select(flag => flag.Trim()).ToList();
             if (hasRoot)
-            {
-                foreach (var bypassPermission in Permissions.RootBypassPermissions)
-                {
-                    if (!string.IsNullOrWhiteSpace(bypassPermission))
-                        Core.Permission.AddPermission(snapshot.SteamID, bypassPermission.Trim());
-                }
-            }
+                flagsToGrant.AddRange(Permissions.RootBypassPermissions);
+            ManagedPermissionGrants.Apply(Core, snapshot.SteamID, flagsToGrant);
 
             if (Tags.Enabled)
             {

@@ -85,11 +85,11 @@ public class MixTeamCommand : CommandBase
             }
 
             _ = AdminLogManager.AddLogAsync("mixteam", adminName, context.Sender?.SteamID ?? 0, null, null, $"players={moved}");
-            Core.Logger.LogInformationIfEnabled("[CS2_Admin] {Admin} mixed teams for {Count} player(s)", adminName, moved);
+            Core.Logger.LogInformationIfEnabled("{Admin} mixed teams for {Count} player(s)", adminName, moved);
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] MixTeam command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "MixTeam command failed");
         }
     }
 }

@@ -74,7 +74,7 @@ public class BlindCommand : CommandBase
                 BroadcastNotification(adminName, "blind_notification", FormatTargetName(targets), durationSeconds);
 
                 _ = AdminLogManager.AddLogAsync("blind", adminName, ctx.Sender?.SteamID ?? 0, null, null, $"targets={targets.Count};duration={durationSeconds}");
-                Core.Logger.LogInformationIfEnabled("[CS2_Admin] {Admin} blinded {Count} player(s) for {Duration}s", adminName, targets.Count, durationSeconds);
+                Core.Logger.LogInformationIfEnabled("{Admin} blinded {Count} player(s) for {Duration}s", adminName, targets.Count, durationSeconds);
             });
     }
 
@@ -99,7 +99,7 @@ public class BlindCommand : CommandBase
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] ApplyBlindEffect failed for {SteamId}", target.SteamID);
+            Core.Logger.LogErrorIfEnabled(ex, "ApplyBlindEffect failed for {SteamId}", target.SteamID);
         }
     }
 
@@ -124,7 +124,7 @@ public class BlindCommand : CommandBase
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] ClearBlindEffect failed for {SteamId}", target.SteamID);
+            Core.Logger.LogErrorIfEnabled(ex, "ClearBlindEffect failed for {SteamId}", target.SteamID);
         }
     }
 }

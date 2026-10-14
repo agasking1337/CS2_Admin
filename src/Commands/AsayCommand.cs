@@ -60,11 +60,11 @@ public class AsayCommand : CommandBase
             }
 
             _ = AdminLogManager.AddLogAsync("asay", adminName, context.Sender?.SteamID ?? 0, null, null, $"message={messageText}");
-            Core.Logger.LogInformationIfEnabled("[CS2_Admin] ASAY from {Admin} delivered to {Count} admins: {Message}", adminName, notified, messageText);
+            Core.Logger.LogInformationIfEnabled("ASAY from {Admin} delivered to {Count} admins: {Message}", adminName, notified, messageText);
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] Asay command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "Asay command failed");
         }
     }
 

@@ -36,11 +36,11 @@ public class MuteManager
             using var connection = _core.Database.GetConnection("mysql_detailed");
             MigrationRunner.RunMigrations(connection);
 
-            _core.Logger.LogInformationIfEnabled("[CS2_Admin] Mute database initialized successfully");
+            _core.Logger.LogInformationIfEnabled("Mute database initialized successfully");
         }
         catch (Exception ex)
         {
-            _core.Logger.LogWarningIfEnabled("[CS2_Admin] Mute database initialization warning: {Message}", ex.Message);
+            _core.Logger.LogWarningIfEnabled("Mute database initialization warning: {Message}", ex.Message);
         }
     }
 
@@ -80,7 +80,7 @@ public class MuteManager
             }
             catch (Exception ex)
             {
-                _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error adding mute: {Message}", ex.Message);
+                _core.Logger.LogErrorIfEnabled("Error adding mute: {Message}", ex.Message);
                 return false;
             }
         });
@@ -129,7 +129,7 @@ public class MuteManager
             }
             catch (Exception ex)
             {
-                _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error unmuting player: {Message}", ex.Message);
+                _core.Logger.LogErrorIfEnabled("Error unmuting player: {Message}", ex.Message);
                 return false;
             }
         });
@@ -197,7 +197,7 @@ public class MuteManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error checking mute: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error checking mute: {Message}", ex.Message);
             return null;
         }
     }
@@ -242,7 +242,7 @@ public class MuteManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error checking fresh mute: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error checking fresh mute: {Message}", ex.Message);
             return null;
         }
     }
@@ -280,7 +280,7 @@ public class MuteManager
             }
             catch (Exception ex)
             {
-                _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error getting total mutes: {Message}", ex.Message);
+                _core.Logger.LogErrorIfEnabled("Error getting total mutes: {Message}", ex.Message);
                 return 0;
             }
         });
@@ -305,13 +305,13 @@ public class MuteManager
 
                 if (cleaned > 0)
                 {
-                    _core.Logger.LogInformationIfEnabled("[CS2_Admin] Marked {Count} mutes as expired", cleaned);
+                    _core.Logger.LogInformationIfEnabled("Marked {Count} mutes as expired", cleaned);
                     _muteCache.Clear();
                 }
             }
             catch (Exception ex)
             {
-                _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error cleaning expired mutes: {Message}", ex.Message);
+                _core.Logger.LogErrorIfEnabled("Error cleaning expired mutes: {Message}", ex.Message);
             }
         });
     }

@@ -25,11 +25,11 @@ public class PlayerNameHistoryManager
         {
             using var connection = _core.Database.GetConnection("mysql_detailed");
             MigrationRunner.RunMigrations(connection);
-            _core.Logger.LogInformationIfEnabled("[CS2_Admin] Player name history database initialized successfully");
+            _core.Logger.LogInformationIfEnabled("Player name history database initialized successfully");
         }
         catch (Exception ex)
         {
-            _core.Logger.LogWarningIfEnabled("[CS2_Admin] Player name history database initialization warning: {Message}", ex.Message);
+            _core.Logger.LogWarningIfEnabled("Player name history database initialization warning: {Message}", ex.Message);
         }
     }
 
@@ -89,7 +89,7 @@ public class PlayerNameHistoryManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error observing player name history: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error observing player name history: {Message}", ex.Message);
         }
     }
 
@@ -145,7 +145,7 @@ public class PlayerNameHistoryManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error saving custom player name: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error saving custom player name: {Message}", ex.Message);
         }
     }
 
@@ -177,7 +177,7 @@ public class PlayerNameHistoryManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error loading custom player name: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error loading custom player name: {Message}", ex.Message);
             return null;
         }
     }
@@ -197,7 +197,7 @@ public class PlayerNameHistoryManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error deleting custom player name: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error deleting custom player name: {Message}", ex.Message);
         }
     }
 
@@ -217,7 +217,7 @@ public class PlayerNameHistoryManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error getting original name: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error getting original name: {Message}", ex.Message);
             return null;
         }
     }

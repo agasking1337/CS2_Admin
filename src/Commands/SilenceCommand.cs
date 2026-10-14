@@ -157,13 +157,13 @@ public sealed class SilenceCommand : CommandBase
 
                 await AdminLogManager.AddLogAsync("silence", adminName, adminSteamId, target.SteamId, target.IpAddress, $"duration={duration};reason={reason}", target.Name);
 
-                Core.Logger.LogInformationIfEnabled("[CS2_Admin] {Admin} silenced {Target} for {Duration} minutes. Reason: {Reason}",
+                Core.Logger.LogInformationIfEnabled("{Admin} silenced {Target} for {Duration} minutes. Reason: {Reason}",
                     adminName, target.Name, duration, reason);
             }
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] Silence command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "Silence command failed");
         }
     }
 

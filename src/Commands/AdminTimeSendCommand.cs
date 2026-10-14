@@ -57,11 +57,11 @@ public class AdminTimeSendCommand : CommandBase
             await AdminLogManager.AddLogAsync("admintimesend", adminName, adminSteamId, null, null, $"count={topAdmins.Count}");
 
             await OnMainThreadAsync(() => Reply(context, "admintime_sent"));
-            Core.Logger.LogInformationIfEnabled("[CS2_Admin] Admin playtime top list sent to Discord by {Admin} and playtime counters reset", adminName);
+            Core.Logger.LogInformationIfEnabled("Admin playtime top list sent to Discord by {Admin} and playtime counters reset", adminName);
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] AdminTimeSend command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "AdminTimeSend command failed");
         }
     }
 }

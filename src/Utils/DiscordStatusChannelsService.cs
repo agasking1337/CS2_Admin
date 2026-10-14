@@ -86,7 +86,7 @@ public class DiscordStatusChannelsService
         }
         catch (Exception ex)
         {
-            _core.Logger.LogWarningIfEnabled("[CS2_Admin] Error updating Discord status channels: {Message}", ex.Message);
+            _core.Logger.LogWarningIfEnabled("Error updating Discord status channels: {Message}", ex.Message);
         }
         finally
         {

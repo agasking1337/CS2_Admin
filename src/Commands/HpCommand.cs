@@ -92,12 +92,12 @@ public class HpCommand : CommandBase
                         $" \x02{L("prefix")}\x01 {L("hp_personal_chat", health)}");
 
                     _ = AdminLogManager.AddLogAsync("hp", adminName, context.Sender?.SteamID ?? 0, liveTarget.SteamID, liveTarget.IPAddress, $"health={health}", targetName);
-                    Core.Logger.LogInformation("[CS2_Admin] {Admin} set health of {Target} to {Health}", adminName, targetName, health);
+                    Core.Logger.LogInformation("{Admin} set health of {Target} to {Health}", adminName, targetName, health);
                 });
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] Hp command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "Hp command failed");
         }
     }
 }

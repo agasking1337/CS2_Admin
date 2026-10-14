@@ -112,11 +112,11 @@ public class WsMapCommand : CommandBase
             });
 
             _ = AdminLogManager.AddLogAsync("wsmap", adminName, context.Sender?.SteamID ?? 0, null, null, $"workshop_id={workshopId};map_name={mapDisplayName}");
-            Core.Logger.LogInformationIfEnabled("[CS2_Admin] {Admin} changed to workshop map {MapName} ({WorkshopId})", adminName, mapDisplayName, workshopId);
+            Core.Logger.LogInformationIfEnabled("{Admin} changed to workshop map {MapName} ({WorkshopId})", adminName, mapDisplayName, workshopId);
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] WsMap command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "WsMap command failed");
         }
     }
 
@@ -184,7 +184,7 @@ public class WsMapCommand : CommandBase
         }
         catch (Exception ex)
         {
-            Core.Logger.LogDebug("[CS2_Admin] Workshop title resolve failed for {WorkshopId}: {Message}", workshopId, ex.Message);
+            Core.Logger.LogDebug("Workshop title resolve failed for {WorkshopId}: {Message}", workshopId, ex.Message);
             return null;
         }
     }

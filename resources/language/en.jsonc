@@ -1,4 +1,5 @@
  {
+  "admintime_refresh": "Refresh admin playtime",
   "usage_label": "Usage",
   "no_permission": "You don't have permission to use this command.",
   "player_not_found": "Player not found.",

@@ -153,6 +153,8 @@ public partial class CS2_Admin : BasePlugin
     private Timer? _adminTimeAutoSendTimer;
     private Timer? _periodicUpdateTimer;
     private int _isTrackingAdminPlaytime;
+    // Cancel only plugin-owned initialization delays on unload; no per-tick work.
+    private CancellationTokenSource? _initializationCts;
 
 
     public CS2_Admin(ISwiftlyCore core) : base(core) { }
@@ -171,6 +173,8 @@ public partial class CS2_Admin : BasePlugin
     public override void Load(bool hotReload)
     {
         _commandsActive = true;
+        _initializationCts?.Dispose();
+        _initializationCts = new CancellationTokenSource();
         _commandBlockerReady = false;
         LoadConfiguration();
         _discord = new DiscordBotService(Core, _config.Discord, _config.Commands);
@@ -182,15 +186,15 @@ public partial class CS2_Admin : BasePlugin
         _discord.Verify.LinkChanged += _commandBlocker.OnLinkChanged;
         _chatTagConfigManager.SetTagDbManager(_tagDbManager);
         _discord.EnsureGatewayConnection();
-        _adminMenuManager = new AdminMenuManager(Core, _config, _warnManager, _adminDbManager, _groupDbManager, _adminLogManager, _adminPlaytimeDbManager, _tagDbManager);
+        _adminMenuManager = new AdminMenuManager(Core, _config, _warnManager, _adminDbManager, _groupDbManager, _adminLogManager, _adminPlaytimeDbManager, _tagDbManager, _chatTagConfigManager);
         _adminLogManager.SetDiscordBotService(_discord);
         InitializeCommands();
         InitializeEventHandlers();
         RegisterCommands();
         _afkManager.Start();
-        _ = InitializeDatabasesAsync();
+        _ = InitializeDatabasesAsync(_initializationCts.Token);
         
-        var versionAttr = (PluginMetadata)Attribute.GetCustomAttribute(typeof(CS2_Admin), typeof(PluginMetadata));
+        var versionAttr = Attribute.GetCustomAttribute(typeof(CS2_Admin), typeof(PluginMetadata)) as PluginMetadata;
         if (versionAttr != null)
         {
             if (_config.AutoUpdate)
@@ -200,11 +204,11 @@ public partial class CS2_Admin : BasePlugin
             }
             else
             {
-                Core.Logger.LogInformationIfEnabled("[CS2Admin] Auto-update is disabled in config.json (AutoUpdate=false).");
+                Core.Logger.LogInformationIfEnabled("Auto-update is disabled in config.json (AutoUpdate=false).");
             }
         }
 
-        Core.Logger.LogInformationIfEnabled("[CS2Admin] Plugin loaded successfully!");
+        Core.Logger.LogInformationIfEnabled("Plugin loaded successfully!");
     }
 
     public override void Unload()
@@ -215,6 +219,7 @@ public partial class CS2_Admin : BasePlugin
         // _commandsActive=false ile pasifleştiriyoruz: stale handler'lar artık hiçbir şey
         // yapmaz, böylece reload'da duplikasyon oluşmaz (crash riski de yoktur).
         _commandsActive = false;
+        _initializationCts?.Cancel();
         _eventRegistrar?.UnregisterAll();
         if (_commandBlocker != null && _discord != null)
             _discord.Verify.LinkChanged -= _commandBlocker.OnLinkChanged;
@@ -253,7 +258,7 @@ public partial class CS2_Admin : BasePlugin
         try
         {
             var languageDir = Path.Combine(Core.PluginPath, "resources", "language");
-            Core.Logger.LogInformationIfEnabled("[CS2Admin] Attempting to load custom localizer from: {Path} | Config Language: {Lang}", languageDir, _config.Language);
+            Core.Logger.LogInformationIfEnabled("Attempting to load custom localizer from: {Path} | Config Language: {Lang}", languageDir, _config.Language);
             
             // Extract embedded translations to disk if they are missing.
             ExtractEmbeddedTranslationsToConfigDirectory(languageDir);
@@ -262,16 +267,16 @@ public partial class CS2_Admin : BasePlugin
             if (localizer != null)
             {
                 PluginLocalizer.SetOverride(localizer);
-                Core.Logger.LogInformationIfEnabled("[CS2Admin] Custom localizer loaded successfully from: {Path}", languageDir);
+                Core.Logger.LogInformationIfEnabled("Custom localizer loaded successfully from: {Path}", languageDir);
             }
             else
             {
-                Core.Logger.LogWarningIfEnabled("[CS2Admin] Failed to create custom localizer from {Path}, fallback to native.", languageDir);
+                Core.Logger.LogWarningIfEnabled("Failed to create custom localizer from {Path}, fallback to native.", languageDir);
             }
         }
         catch (Exception ex)
         {
-            Core.Logger.LogWarningIfEnabled("[CS2Admin] Error loading custom localizer: {Message}", ex.Message);
+            Core.Logger.LogWarningIfEnabled("Error loading custom localizer: {Message}", ex.Message);
         }
     }
 
@@ -289,7 +294,7 @@ public partial class CS2_Admin : BasePlugin
 
             if (resources.Count == 0)
             {
-                Core.Logger.LogWarningIfEnabled("[CS2Admin] No embedded translation resources were found in assembly.");
+                Core.Logger.LogWarningIfEnabled("No embedded translation resources were found in assembly.");
                 return;
             }
 
@@ -311,12 +316,12 @@ public partial class CS2_Admin : BasePlugin
 
                 using var file = File.Create(destinationPath);
                 stream.CopyTo(file);
-                Core.Logger.LogInformationIfEnabled("[CS2Admin] Extracted default translation file: {File}", fileName);
+                Core.Logger.LogInformationIfEnabled("Extracted default translation file: {File}", fileName);
             }
         }
         catch (Exception ex)
         {
-            Core.Logger.LogWarningIfEnabled("[CS2Admin] Failed to extract translations: {Message}", ex.Message);
+            Core.Logger.LogWarningIfEnabled("Failed to extract translations: {Message}", ex.Message);
         }
     }
 
@@ -332,7 +337,7 @@ public partial class CS2_Admin : BasePlugin
         }
         catch (Exception ex)
         {
-            Core.Logger.LogWarningIfEnabled("[CS2Admin] Failed to load {File}: {Msg}", file, ex.Message);
+            Core.Logger.LogWarningIfEnabled("Failed to load {File}: {Msg}", file, ex.Message);
         }
     }
 
@@ -347,7 +352,7 @@ public partial class CS2_Admin : BasePlugin
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] Failed to apply culture {Culture}", culture);
+            Core.Logger.LogErrorIfEnabled(ex, "Failed to apply culture {Culture}", culture);
         }
     }
 
@@ -359,7 +364,7 @@ public partial class CS2_Admin : BasePlugin
         }
         catch (Exception ex)
         {
-            Core.Logger.LogWarningIfEnabled("[CS2Admin] Failed to load chat tags, using defaults: {Msg}", ex.Message);
+            Core.Logger.LogWarningIfEnabled("Failed to load chat tags, using defaults: {Msg}", ex.Message);
         }
     }
 
@@ -393,11 +398,11 @@ public partial class CS2_Admin : BasePlugin
             targetSection["BanMode"] = desiredBanMode;
             var rewritten = root.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
             File.WriteAllText(configPath, rewritten);
-            Core.Logger.LogInformationIfEnabled("[CS2Admin] Normalized BanMode in config.json: {BanMode}", desiredBanMode);
+            Core.Logger.LogInformationIfEnabled("Normalized BanMode in config.json: {BanMode}", desiredBanMode);
         }
         catch (Exception ex)
         {
-            Core.Logger.LogWarningIfEnabled("[CS2Admin] Failed to normalize BanMode in config.json: {Msg}", ex.Message);
+            Core.Logger.LogWarningIfEnabled("Failed to normalize BanMode in config.json: {Msg}", ex.Message);
         }
     }
 
@@ -565,13 +570,14 @@ public partial class CS2_Admin : BasePlugin
     
                     _ = Task.Run(async () =>
                     {
-                        var customName = await _playerNameHistoryManager.GetCustomNameAsync(player.SteamID);
+                        var playerSteamId = player.SteamID;
+                        var customName = await _playerNameHistoryManager.GetCustomNameAsync(playerSteamId);
                         if (!string.IsNullOrWhiteSpace(customName))
                         {
                             Core.Scheduler.NextTick(() =>
                             {
                                 var live = Core.PlayerManager.GetPlayer(e.PlayerId);
-                                if (live?.IsValid == true && live.Controller != null)
+                                if (live?.IsValid == true && !live.IsFakeClient && live.SteamID == playerSteamId && live.Controller != null)
                                 {
                                     live.Controller.PlayerName = customName;
                                     live.Controller.PlayerNameUpdated();
@@ -609,7 +615,7 @@ public partial class CS2_Admin : BasePlugin
                             Core.Scheduler.NextTick(() =>
                             {
                                 var target = Core.PlayerManager.GetPlayer(playerId);
-                                if (target?.IsValid == true)
+                                if (target?.IsValid == true && !target.IsFakeClient && target.SteamID == steamId)
                                     target.Kick(kickReason, ENetworkDisconnectionReason.NETWORK_DISCONNECT_REJECT_BANNED);
                             });
                             return;
@@ -619,39 +625,37 @@ public partial class CS2_Admin : BasePlugin
                         if (admin != null && admin.IsActive)
                         {
                             var effectiveFlags = await _adminDbManager.GetEffectiveFlagsAsync(steamId);
-                            var hasRoot = false;
-                            foreach (var flag in effectiveFlags)
-                            {
-                                if (string.IsNullOrWhiteSpace(flag)) continue;
-                                var normalizedFlag = flag.Trim();
-                                Core.Permission.AddPermission(steamId, normalizedFlag);
-                                if (string.Equals(normalizedFlag, _config.Permissions.AdminRoot, StringComparison.OrdinalIgnoreCase))
-                                    hasRoot = true;
-                            }
+                            var hasRoot = effectiveFlags.Any(flag =>
+                                string.Equals(flag?.Trim(), _config.Permissions.AdminRoot, StringComparison.OrdinalIgnoreCase));
+                            var flagsToGrant = effectiveFlags.Where(flag => !string.IsNullOrWhiteSpace(flag))
+                                .Select(flag => flag.Trim()).ToList();
                             if (hasRoot)
-                            {
-                                foreach (var bypassPermission in _config.Permissions.RootBypassPermissions)
-                                {
-                                    if (!string.IsNullOrWhiteSpace(bypassPermission))
-                                        Core.Permission.AddPermission(steamId, bypassPermission.Trim());
-                                }
-                            }
+                                flagsToGrant.AddRange(_config.Permissions.RootBypassPermissions);
+                            if (_commandsActive)
+                                ManagedPermissionGrants.Apply(Core, steamId, flagsToGrant);
 
-                            if (_config.Tags.Enabled)
+                            if (_config.Tags.Enabled && _chatTagConfigManager.Config.ScoreboardEnabled && _chatTagConfigManager.Config.Groups.Count > 0)
                             {
-                                var tag = _groupDbManager.GetPrimaryGroupNameSync(admin.GroupList) ?? admin.GroupList.FirstOrDefault() ?? "ADMIN";
+                                var tag = _groupDbManager.GetPrimaryGroupNameSync(admin.GroupList) ?? admin.GroupList.FirstOrDefault() ?? "";
+                                tag = _chatTagConfigManager.Config.Groups.Keys.Any(k => string.Equals(k, tag, StringComparison.OrdinalIgnoreCase)) ? tag : "";
                                 Core.Scheduler.NextTick(() =>
                                 {
                                     var target = Core.PlayerManager.GetPlayer(e.PlayerId);
-                                    if (target?.IsValid == true)
+                                    if (target?.IsValid == true && !target.IsFakeClient && target.SteamID == steamId)
                                         PlayerUtils.SetScoreTagReliable(Core, target.PlayerID, tag);
                                 });
                             }
                         }
+                        else if (_commandsActive)
+                        {
+                            // Revoke permissions previously granted by this plugin if the
+                            // account is no longer an active administrator.
+                            ManagedPermissionGrants.Apply(Core, steamId, Array.Empty<string>());
+                        }
                     }
                     catch (Exception ex)
                     {
-                        Core.Logger.LogWarningIfEnabled("[CS2_Admin] Failed to assign permissions for player {PlayerId}: {Message}", e.PlayerId, ex.Message);
+                        Core.Logger.LogWarningIfEnabled("Failed to assign permissions for player {PlayerId}: {Message}", e.PlayerId, ex.Message);
                     }
                 });
             }
@@ -714,14 +718,14 @@ public partial class CS2_Admin : BasePlugin
                 Core.Scheduler.NextTick(() =>
                 {
                     var live = Core.PlayerManager.GetPlayer(playerId);
-                    if (live?.IsValid == true && !live.IsFakeClient)
+                    if (live?.IsValid == true && !live.IsFakeClient && live.SteamID == steamId)
                         live.VoiceFlags = VoiceFlagValue.Muted;
                 });
             }
         }
         catch (Exception ex)
         {
-            Core.Logger.LogWarningIfEnabled("[CS2_Admin] Failed to reapply voice mute on connect for {SteamId}: {Msg}", steamId, ex.Message);
+            Core.Logger.LogWarningIfEnabled("Failed to reapply voice mute on connect for {SteamId}: {Msg}", steamId, ex.Message);
         }
     }
 
@@ -793,43 +797,48 @@ public partial class CS2_Admin : BasePlugin
         }
         catch (Exception ex)
         {
-            Core.Logger.LogWarningIfEnabled("[CS2_Admin] Alt account check failed for {SteamId}: {Message}", steamId, ex.Message);
+            Core.Logger.LogWarningIfEnabled("Alt account check failed for {SteamId}: {Message}", steamId, ex.Message);
         }
     }
 
-    private async Task InitializeDatabasesAsync()
+    private async Task InitializeDatabasesAsync(CancellationToken cancellationToken)
     {
         var maxRetries = 3;
         var retryDelayMs = 5000;
 
         for (var attempt = 1; attempt <= maxRetries; attempt++)
         {
+            if (cancellationToken.IsCancellationRequested || !_commandsActive) return;
             try
             {
                 using var testConn = Core.Database.GetConnection("mysql_detailed");
                 testConn.Open();
                 if (testConn.State != System.Data.ConnectionState.Open)
                 {
-                    Core.Logger.LogWarningIfEnabled("[CS2Admin] Database connection not open (attempt {Attempt}/{MaxRetries})", attempt, maxRetries);
+                    Core.Logger.LogWarningIfEnabled("Database connection not open (attempt {Attempt}/{MaxRetries})", attempt, maxRetries);
                     if (attempt < maxRetries)
                     {
-                        await Task.Delay(retryDelayMs);
+                        await Task.Delay(retryDelayMs, cancellationToken);
                         continue;
                     }
-                    Core.Logger.LogWarningIfEnabled("[CS2Admin] Database unavailable after {MaxRetries} attempts, continuing without database features", maxRetries);
+                    Core.Logger.LogWarningIfEnabled("Database unavailable after {MaxRetries} attempts, continuing without database features", maxRetries);
                     return;
                 }
                 testConn.Close();
             }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
             catch (Exception ex)
             {
-                Core.Logger.LogWarningIfEnabled("[CS2Admin] Database connection failed (attempt {Attempt}/{MaxRetries}): {Msg}", attempt, maxRetries, ex.Message);
+                Core.Logger.LogWarningIfEnabled("Database connection failed (attempt {Attempt}/{MaxRetries}): {Msg}", attempt, maxRetries, ex.Message);
                 if (attempt < maxRetries)
                 {
-                    await Task.Delay(retryDelayMs);
+                    await Task.Delay(retryDelayMs, cancellationToken);
                     continue;
                 }
-                Core.Logger.LogWarningIfEnabled("[CS2Admin] Database unavailable after {MaxRetries} attempts, continuing without database features", maxRetries);
+                Core.Logger.LogWarningIfEnabled("Database unavailable after {MaxRetries} attempts, continuing without database features", maxRetries);
                 return;
             }
 
@@ -856,6 +865,7 @@ public partial class CS2_Admin : BasePlugin
                 await _playerSessionManager.InitializeAsync();
                 await _playerNameHistoryManager.InitializeAsync();
 
+                if (cancellationToken.IsCancellationRequested || !_commandsActive) return;
                 _eventRegistrar?.SetDatabaseReady(true);
                 await _chatTagConfigManager.SyncWithGroupsAsync(_groupDbManager);
                 await RefreshAdminStateForAllOnlinePlayersAsync();
@@ -865,22 +875,27 @@ public partial class CS2_Admin : BasePlugin
                 _commandBlockerReady = true;
                 Core.Scheduler.NextTick(() =>
                 {
+                    if (!_commandsActive || cancellationToken.IsCancellationRequested) return;
                     foreach (var online in Core.PlayerManager.GetAllPlayers().Where(p => p.IsValid && !p.IsFakeClient))
                         _commandBlocker.WarmUp(online.SteamID);
                 });
 
                 break;
             }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
             catch (Exception ex)
             {
-                Core.Logger.LogWarningIfEnabled("[CS2Admin] Database init failed (attempt {Attempt}/{MaxRetries}): {Msg}", attempt, maxRetries, ex.Message);
+                Core.Logger.LogWarningIfEnabled("Database init failed (attempt {Attempt}/{MaxRetries}): {Msg}", attempt, maxRetries, ex.Message);
                 if (attempt < maxRetries)
                 {
-                    await Task.Delay(retryDelayMs);
+                    await Task.Delay(retryDelayMs, cancellationToken);
                 }
                 else
                 {
-                    Core.Logger.LogWarningIfEnabled("[CS2Admin] Database init failed after {MaxRetries} attempts, continuing without database features", maxRetries);
+                    Core.Logger.LogWarningIfEnabled("Database init failed after {MaxRetries} attempts, continuing without database features", maxRetries);
                 }
             }
         }
@@ -893,11 +908,12 @@ public partial class CS2_Admin : BasePlugin
         _adminPlaytimeTimer = new Timer(_ =>
         {
             if (Interlocked.Exchange(ref _isTrackingAdminPlaytime, 1) == 1) return;
+            if (!_commandsActive) { Interlocked.Exchange(ref _isTrackingAdminPlaytime, 0); return; }
             Core.Scheduler.NextTick(() =>
             {
+                if (!_commandsActive) { Interlocked.Exchange(ref _isTrackingAdminPlaytime, 0); return; }
                 var snapshots = Core.PlayerManager.GetAllPlayers()
                     .Where(p => p.IsValid && !p.IsFakeClient)
-                    .Where(p => p.Controller.TeamNum >= 2)
                     .Select(p => new AdminPlaytimeSnapshot(p.SteamID, p.Controller.PlayerName ?? PluginLocalizer.Get(Core)["player_fallback_name", p.PlayerID]))
                     .ToList();
                 _ = Task.Run(async () =>
@@ -935,17 +951,17 @@ public partial class CS2_Admin : BasePlugin
                     .ToList();
 
                 await _discord.SendAdminTimeNotificationAsync(topAdmins, zeroPlaytimeAdmins);
-                Core.Logger.LogInformationIfEnabled("[CS2Admin] Admin playtime auto-sent to Discord ({Count} admins)", topAdmins.Count);
+                Core.Logger.LogInformationIfEnabled("Admin playtime auto-sent to Discord ({Count} admins)", topAdmins.Count);
 
                 if (cfg.AutoSendResetAfterSend)
                 {
                     await _adminPlaytimeDbManager.ResetAllAsync();
-                    Core.Logger.LogInformationIfEnabled("[CS2Admin] Admin playtime reset after auto-send");
+                    Core.Logger.LogInformationIfEnabled("Admin playtime reset after auto-send");
                 }
             }
             catch (Exception ex)
             {
-                Core.Logger.LogWarningIfEnabled("[CS2Admin] Admin time auto-send failed: {Msg}", ex.Message);
+                Core.Logger.LogWarningIfEnabled("Admin time auto-send failed: {Msg}", ex.Message);
             }
         }, null, firstDelayMs, periodMs);
     }
@@ -955,6 +971,7 @@ public partial class CS2_Admin : BasePlugin
         _periodicUpdateTimer?.Dispose();
         _periodicUpdateTimer = new Timer(_ =>
         {
+            if (!_commandsActive) return;
             _ = global::CS2_Admin.Utils.AutoUpdater.CheckForUpdatesAsync(Core, currentVersion);
         }, null, TimeSpan.FromHours(1), TimeSpan.FromHours(1));
     }
@@ -967,23 +984,6 @@ public partial class CS2_Admin : BasePlugin
             var admins = await _adminDbManager.GetAllAdminsAsync();
             var adminsBySteamId = admins.ToDictionary(a => a.SteamId, a => a);
 
-            var managedPermissions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var group in groups)
-            {
-                foreach (var flag in SplitPermissions(group.Flags))
-                    managedPermissions.Add(flag);
-            }
-            foreach (var admin in admins)
-            {
-                foreach (var flag in SplitPermissions(admin.Flags))
-                    managedPermissions.Add(flag);
-            }
-            foreach (var bypassPermission in _config.Permissions.RootBypassPermissions)
-            {
-                if (!string.IsNullOrWhiteSpace(bypassPermission))
-                    managedPermissions.Add(bypassPermission.Trim());
-            }
-
             var onlinePlayers = Core.PlayerManager
                 .GetAllPlayers()
                 .Where(p => p.IsValid && !p.IsFakeClient)
@@ -994,59 +994,45 @@ public partial class CS2_Admin : BasePlugin
 
             foreach (var snapshot in onlinePlayers)
             {
-                foreach (var permission in managedPermissions)
-                    Core.Permission.RemovePermission(snapshot.SteamID, permission);
-
                 var effectiveFlags = await _adminDbManager.GetEffectiveFlagsAsync(snapshot.SteamID);
-                var hasRoot = false;
-
-                foreach (var flag in effectiveFlags)
-                {
-                    if (string.IsNullOrWhiteSpace(flag)) continue;
-                    var normalizedFlag = flag.Trim();
-                    Core.Permission.AddPermission(snapshot.SteamID, normalizedFlag);
-                    if (string.Equals(normalizedFlag, _config.Permissions.AdminRoot, StringComparison.OrdinalIgnoreCase))
-                        hasRoot = true;
-                }
-
+                var hasRoot = effectiveFlags.Any(flag =>
+                    string.Equals(flag?.Trim(), _config.Permissions.AdminRoot, StringComparison.OrdinalIgnoreCase));
+                var flagsToGrant = effectiveFlags.Where(flag => !string.IsNullOrWhiteSpace(flag))
+                    .Select(flag => flag.Trim()).ToList();
                 if (hasRoot)
-                {
-                    foreach (var bypassPermission in _config.Permissions.RootBypassPermissions)
-                    {
-                        if (!string.IsNullOrWhiteSpace(bypassPermission))
-                            Core.Permission.AddPermission(snapshot.SteamID, bypassPermission.Trim());
-                    }
-                }
+                    flagsToGrant.AddRange(_config.Permissions.RootBypassPermissions);
+                ManagedPermissionGrants.Apply(Core, snapshot.SteamID, flagsToGrant);
 
-                if (_config.Tags.Enabled)
+                if (_config.Tags.Enabled && _chatTagConfigManager.Config.ScoreboardEnabled && _chatTagConfigManager.Config.Groups.Count > 0)
                 {
                     adminsBySteamId.TryGetValue(snapshot.SteamID, out var activeAdmin);
                     var adminGroupTag = activeAdmin != null && activeAdmin.IsActive
                         ? _groupDbManager.GetPrimaryGroupNameSync(activeAdmin.GroupList) ?? activeAdmin.GroupList.FirstOrDefault()
                         : null;
 
-                    if (string.IsNullOrWhiteSpace(adminGroupTag) &&
-                        Core.Permission.PlayerHasPermission(snapshot.SteamID, _config.Permissions.AdminRoot))
-                    {
-                        adminGroupTag = "ADMIN";
-                    }
+                    if (!string.IsNullOrWhiteSpace(adminGroupTag) && !_chatTagConfigManager.Config.Groups.Keys.Any(k => string.Equals(k, adminGroupTag, StringComparison.OrdinalIgnoreCase)))
+                        adminGroupTag = null;
 
                     resolvedTags[snapshot.PlayerID] = string.IsNullOrWhiteSpace(adminGroupTag)
-                        ? _config.Tags.PlayerTag
+                        ? (_chatTagConfigManager.Config.Groups.Count == 0 ? "" : _config.Tags.PlayerTag)
                         : adminGroupTag;
                 }
             }
 
             Core.Scheduler.NextTick(() =>
             {
-                if (!_config.Tags.Enabled) return;
+                if (!_config.Tags.Enabled || !_commandsActive) return;
                 foreach (var pair in resolvedTags)
-                    PlayerUtils.SetScoreTagReliable(Core, pair.Key, pair.Value);
+                {
+                    var live = Core.PlayerManager.GetPlayer(pair.Key);
+                    if (live?.IsValid == true && !live.IsFakeClient && onlinePlayers.Any(p => p.PlayerID == pair.Key && p.SteamID == live.SteamID))
+                        PlayerUtils.SetScoreTagReliable(Core, pair.Key, pair.Value);
+                }
             });
         }
         catch (Exception ex)
         {
-            Core.Logger.LogWarningIfEnabled("[CS2Admin] Failed to refresh admin state: {Message}", ex.Message);
+            Core.Logger.LogWarningIfEnabled("Failed to refresh admin state: {Message}", ex.Message);
         }
     }
 

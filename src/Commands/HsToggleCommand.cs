@@ -41,19 +41,19 @@ public class HsToggleCommand : CommandBase
                 Core.Engine.ExecuteCommand("mp_damage_headshot_only 0");
                 BroadcastNotification(adminName, "headshot_disabled");
                 _ = AdminLogManager.AddLogAsync("hsoff", adminName, context.Sender?.SteamID ?? 0, null, null, "mp_damage_headshot_only=0");
-                Core.Logger.LogInformation("[CS2_Admin] {Admin} disabled headshot-only mode", adminName);
+                Core.Logger.LogInformation("{Admin} disabled headshot-only mode", adminName);
             }
             else
             {
                 Core.Engine.ExecuteCommand("mp_damage_headshot_only 1");
                 BroadcastNotification(adminName, "headshot_enabled");
                 _ = AdminLogManager.AddLogAsync("hson", adminName, context.Sender?.SteamID ?? 0, null, null, "mp_damage_headshot_only=1");
-                Core.Logger.LogInformation("[CS2_Admin] {Admin} enabled headshot-only mode", adminName);
+                Core.Logger.LogInformation("{Admin} enabled headshot-only mode", adminName);
             }
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] HsToggle command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "HsToggle command failed");
         }
     }
 }

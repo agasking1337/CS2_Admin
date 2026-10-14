@@ -53,7 +53,7 @@ public class IpBanCommand : BanCommandBase
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] IpBan command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "IpBan command failed");
         }
     }
 
@@ -111,25 +111,19 @@ public class IpBanCommand : BanCommandBase
 
             _banManager.SetAdminContext(adminName, adminSteamId);
 
-            if (shouldBanSteam)
+            var existingSteam = shouldBanSteam ? await _banManager.GetActiveBanFreshAsync(targetSnapshot.SteamId, null, _multiServerConfig.Enabled) : null;
+            var existingIp = shouldBanIp ? await _banManager.GetActiveBanFreshAsync(0, targetSnapshot.IpAddress, _multiServerConfig.Enabled) : null;
+            if (existingSteam != null || existingIp != null)
             {
-                var existingSteam = await _banManager.GetActiveBanFreshAsync(targetSnapshot.SteamId, null, _multiServerConfig.Enabled);
-                if (existingSteam == null)
-                {
-                    _banManager.InvalidateCache(targetSnapshot.SteamId, null);
-                    _ = _banManager.AddBanAsync(targetSnapshot.SteamId, targetSnapshot.Name, duration, reason, isGlobal);
-                }
+                await OnMainThreadAsync(() => Reply(context, "player_already_banned", targetSnapshot.Name));
+                return;
             }
-
-            if (shouldBanIp)
-            {
-                var existingIp = await _banManager.GetActiveBanFreshAsync(0, targetSnapshot.IpAddress, _multiServerConfig.Enabled);
-                if (existingIp == null)
-                {
-                    _banManager.InvalidateCache(0, targetSnapshot.IpAddress);
-                    _ = _banManager.AddIpBanAsync(targetSnapshot.IpAddress!, targetSnapshot.Name, duration, reason, isGlobal, targetSnapshot.SteamId);
-                }
-            }
+            var added = shouldBanSteam && shouldBanIp
+                ? await _banManager.AddCombinedBanAsync(targetSnapshot.SteamId, targetSnapshot.Name, targetSnapshot.IpAddress!, duration, reason, isGlobal)
+                : shouldBanSteam
+                    ? await _banManager.AddBanAsync(targetSnapshot.SteamId, targetSnapshot.Name, duration, reason, isGlobal, targetSnapshot.IpAddress)
+                    : await _banManager.AddIpBanAsync(targetSnapshot.IpAddress!, targetSnapshot.Name, duration, reason, isGlobal, targetSnapshot.SteamId);
+            if (!added) return;
 
             _ = _sanctionStateService.RefreshAsync(targetSnapshot.SteamId, targetSnapshot.IpAddress);
 

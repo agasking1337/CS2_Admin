@@ -101,7 +101,7 @@ public class DiscordInteractionHandler
         }
         catch (Exception ex)
         {
-            _core.Logger.LogWarningIfEnabled("[CS2_Admin] Error handling interaction: {Message}", ex.Message);
+            _core.Logger.LogWarningIfEnabled("Error handling interaction: {Message}", ex.Message);
         }
     }
 
@@ -111,7 +111,7 @@ public class DiscordInteractionHandler
         {
             if (!await _restClient.RespondToInteractionAsync(interactionId, interactionToken, 6))
             {
-                _core.Logger.LogWarningIfEnabled("[CS2_Admin] Discord resolve interaction defer failed for custom_id={CustomId}", customId);
+                _core.Logger.LogWarningIfEnabled("Discord resolve interaction defer failed for custom_id={CustomId}", customId);
                 return;
             }
 
@@ -157,13 +157,13 @@ public class DiscordInteractionHandler
 
             if (string.IsNullOrWhiteSpace(channelId) || string.IsNullOrWhiteSpace(messageId) || !await UpdateMessageAsync(channelId, messageId, payload))
             {
-                _core.Logger.LogWarningIfEnabled("[CS2_Admin] Discord resolve interaction message update failed for custom_id={CustomId}", customId);
+                _core.Logger.LogWarningIfEnabled("Discord resolve interaction message update failed for custom_id={CustomId}", customId);
                 await SendFollowupAsync(applicationId, interactionToken, T("discord_report_resolve_followup_failed", "Report could not be marked as resolved."));
             }
         }
         catch (Exception ex)
         {
-            _core.Logger.LogWarningIfEnabled("[CS2_Admin] Error in resolve interaction: {Message}", ex.Message);
+            _core.Logger.LogWarningIfEnabled("Error in resolve interaction: {Message}", ex.Message);
             await SendFollowupAsync(applicationId, interactionToken, T("discord_report_resolve_internal_error", "An internal error occurred while resolving the report."));
         }
     }
@@ -174,7 +174,7 @@ public class DiscordInteractionHandler
         {
             if (!await _restClient.RespondToInteractionAsync(interactionId, interactionToken, 5, new { flags = 64 }))
             {
-                _core.Logger.LogWarningIfEnabled("[CS2_Admin] Discord punish interaction defer failed for custom_id={CustomId}", customId);
+                _core.Logger.LogWarningIfEnabled("Discord punish interaction defer failed for custom_id={CustomId}", customId);
                 return;
             }
 
@@ -230,12 +230,12 @@ public class DiscordInteractionHandler
 
             if (!await EditOriginalResponseAsync(applicationId, interactionToken, payload))
             {
-                _core.Logger.LogWarningIfEnabled("[CS2_Admin] Discord punish interaction response edit failed for custom_id={CustomId}", customId);
+                _core.Logger.LogWarningIfEnabled("Discord punish interaction response edit failed for custom_id={CustomId}", customId);
             }
         }
         catch (Exception ex)
         {
-            _core.Logger.LogWarningIfEnabled("[CS2_Admin] Error in punish interaction: {Message}", ex.Message);
+            _core.Logger.LogWarningIfEnabled("Error in punish interaction: {Message}", ex.Message);
             await EditOriginalResponseAsync(applicationId, interactionToken, BuildEditErrorPayload(T("discord_report_punishments_internal_error", "An internal error occurred while loading punishments.")));
         }
     }
@@ -246,7 +246,7 @@ public class DiscordInteractionHandler
         {
             if (_verifyService == null || !_verifyService.IsEnabled)
             {
-                _core.Logger.LogWarningIfEnabled("[CS2_Admin] Discord verify button clicked but verification is disabled");
+                _core.Logger.LogWarningIfEnabled("Discord verify button clicked but verification is disabled");
                 await SendErrorAsync(interactionId, interactionToken, T("discord_verify_disabled", "Verification is currently disabled."));
                 return;
             }
@@ -280,15 +280,15 @@ public class DiscordInteractionHandler
 
             if (!await _restClient.RespondToInteractionAsync(interactionId, interactionToken, 9, modal))
             {
-                _core.Logger.LogWarningIfEnabled("[CS2_Admin] Discord verify modal response failed");
+                _core.Logger.LogWarningIfEnabled("Discord verify modal response failed");
                 return;
             }
 
-            _core.Logger.LogInformationIfEnabled("[CS2_Admin][Debug][Discord] verify modal opened interactionId={InteractionId}", interactionId);
+            _core.Logger.LogInformationIfEnabled("[Debug][Discord] verify modal opened interactionId={InteractionId}", interactionId);
         }
         catch (Exception ex)
         {
-            _core.Logger.LogWarningIfEnabled("[CS2_Admin] Discord verify open handler failed: {Message}", ex.Message);
+            _core.Logger.LogWarningIfEnabled("Discord verify open handler failed: {Message}", ex.Message);
             await SendErrorAsync(interactionId, interactionToken, T("discord_verify_error", "Something went wrong. Please try again."));
         }
     }
@@ -307,7 +307,7 @@ public class DiscordInteractionHandler
             // so acknowledge the interaction immediately and edit the deferred message once the work is done.
             if (!await _restClient.RespondToInteractionAsync(interactionId, interactionToken, 5, new { flags = 64 }))
             {
-                _core.Logger.LogWarningIfEnabled("[CS2_Admin] Discord verify modal submit defer failed");
+                _core.Logger.LogWarningIfEnabled("Discord verify modal submit defer failed");
                 return;
             }
 
@@ -338,7 +338,7 @@ public class DiscordInteractionHandler
         }
         catch (Exception ex)
         {
-            _core.Logger.LogWarningIfEnabled("[CS2_Admin] Error in verify modal submit: {Message}", ex.Message);
+            _core.Logger.LogWarningIfEnabled("Error in verify modal submit: {Message}", ex.Message);
             await EditOriginalResponseAsync(applicationId, interactionToken, BuildEditErrorPayload(T("discord_verify_error", "Something went wrong. Please try again.")));
         }
     }

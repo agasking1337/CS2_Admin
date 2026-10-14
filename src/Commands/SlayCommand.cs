@@ -37,7 +37,7 @@ public class SlayCommand : CommandBase
 
                 foreach (var target in targets)
                 {
-                    if (target.PlayerPawn?.IsValid == true)
+                    if (target.Controller.TeamNum is 2 or 3 && target.PlayerPawn?.IsValid == true && target.PlayerPawn.Health > 0)
                     {
                         target.PlayerPawn.CommitSuicide(false, true);
                     }
@@ -70,7 +70,7 @@ public class SlayCommand : CommandBase
 
                 var targetSteamIds = string.Join(",", targets.Select(t => t.SteamID));
                 _ = AdminLogManager.AddLogAsync("slay", adminName, ctx.Sender?.SteamID ?? 0, null, null, $"targets={targetSteamIds};count={targets.Count}");
-                Core.Logger.LogInformationIfEnabled("[CS2_Admin] {Admin} slayed {Count} player(s)", adminName, targets.Count);
+                Core.Logger.LogInformationIfEnabled("{Admin} slayed {Count} player(s)", adminName, targets.Count);
             });
     }
 }

@@ -123,14 +123,14 @@ public sealed class UngagCommand : CommandBase
                     }
                 });
 
-                Core.Logger.LogInformationIfEnabled("[CS2_Admin] {Admin} ungagged {Target}. Reason: {Reason}",
+                Core.Logger.LogInformationIfEnabled("{Admin} ungagged {Target}. Reason: {Reason}",
                     adminName, target.Name, reason);
                 await AdminLogManager.AddLogAsync("ungag", adminName, adminSteamId, target.SteamId, target.IpAddress, $"reason={reason}", target.Name, target.PlayerId, reason);
             }
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] Ungag command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "Ungag command failed");
         }
     }
 

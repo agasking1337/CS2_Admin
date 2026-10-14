@@ -63,7 +63,7 @@ public class UnverifyCommand : CommandBase
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] Unverify command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "Unverify command failed");
         }
     }
 }

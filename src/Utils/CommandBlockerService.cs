@@ -47,7 +47,7 @@ public sealed class CommandBlockerService
         if (!_discord.VerifyEnabled || string.IsNullOrWhiteSpace(_discord.BotToken)
             || string.IsNullOrWhiteSpace(_discord.GuildId) || string.IsNullOrWhiteSpace(_discord.VerifiedRoleId))
         {
-            _core.Logger.LogWarningIfEnabled("[CS2Admin] Command blocker requires VerifyEnabled, BotToken, GuildId and VerifiedRoleId in discord.json.");
+            _core.Logger.LogWarningIfEnabled("Command blocker requires VerifyEnabled, BotToken, GuildId and VerifiedRoleId in discord.json.");
             return;
         }
         _active = true;
@@ -75,7 +75,8 @@ public sealed class CommandBlockerService
 
     private HookResult OnClientCommand(int playerId, string commandLine)
     {
-        var first = commandLine?.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "";
+        if (string.IsNullOrWhiteSpace(commandLine)) return HookResult.Continue;
+        var first = commandLine.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "";
         if (first.Equals("say", StringComparison.OrdinalIgnoreCase)
             || first.Equals("say_team", StringComparison.OrdinalIgnoreCase))
         {
@@ -157,7 +158,7 @@ public sealed class CommandBlockerService
             }
             else
             {
-                _core.Logger.LogWarningIfEnabled("[CS2Admin] Could not check Discord verified role (HTTP {Status}).", (int)response.StatusCode);
+                _core.Logger.LogWarningIfEnabled("Could not check Discord verified role (HTTP {Status}).", (int)response.StatusCode);
                 if (_versions.GetOrAdd(steamId, 0) != version) return;
                 _cache[steamId] = (true, false, DateTime.UtcNow.AddSeconds(10));
                 Notify(playerId, steamId, "command_blocker_role_required");
@@ -165,7 +166,7 @@ public sealed class CommandBlockerService
         }
         catch (Exception ex)
         {
-            _core.Logger.LogWarningIfEnabled("[CS2Admin] Could not check Discord verified role: {Message}", ex.Message);
+            _core.Logger.LogWarningIfEnabled("Could not check Discord verified role: {Message}", ex.Message);
             if (_versions.GetOrAdd(steamId, 0) != version) return;
             _cache[steamId] = (false, false, DateTime.UtcNow.AddSeconds(10));
         }

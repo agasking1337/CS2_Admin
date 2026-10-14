@@ -33,7 +33,7 @@ public class DisarmCommand : CommandBase
     public override void Execute(ICommandContext context)
     {
         RunTargetedFunCommand(context, CommandsConfig.Disarm, Permissions.Disarm, "disarm_usage", _adminDbManager, "Disarm",
-            includeDeadPlayers: true,
+            includeDeadPlayers: false,
             onMainThread: (ctx, args, targets, adminName) =>
             {
                 var changed = 0;
@@ -65,7 +65,7 @@ public class DisarmCommand : CommandBase
                     BroadcastNotification(adminName, "disarm_notification", FormatTargetName(targets));
 
                 _ = AdminLogManager.AddLogAsync("disarm", adminName, ctx.Sender?.SteamID ?? 0, null, null, $"targets={changed}");
-                Core.Logger.LogInformationIfEnabled("[CS2_Admin] {Admin} disarmed {Count} player(s)", adminName, changed);
+                Core.Logger.LogInformationIfEnabled("{Admin} disarmed {Count} player(s)", adminName, changed);
             });
     }
 }

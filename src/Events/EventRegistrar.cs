@@ -224,7 +224,7 @@ public class EventRegistrar
         }
 
 
-        if (_chatTagConfigManager.Config.ChatEnabled && !string.IsNullOrWhiteSpace(text))
+        if (_chatTagConfigManager.Config.ChatEnabled && _chatTagConfigManager.Config.Groups.Count > 0 && !string.IsNullOrWhiteSpace(text))
         {
             if (DebugSettings.LoggingEnabled)
             {
@@ -289,7 +289,7 @@ public class EventRegistrar
             delivered++;
         }
 
-        _core.Logger.LogInformationIfEnabled("[CS2_Admin] {Channel} from {Admin} delivered to {Count} admins: {Message}",
+        _core.Logger.LogInformationIfEnabled("{Channel} from {Admin} delivered to {Count} admins: {Message}",
             label, senderName, delivered, message);
         return true;
     }
@@ -300,7 +300,7 @@ public class EventRegistrar
             return true;
         if (!string.IsNullOrWhiteSpace(_permissions.AdminMenu) && _core.Permission.PlayerHasPermission(steamId, _permissions.AdminMenu))
             return true;
-        if (_core.Permission.PlayerHasPermission(steamId, _permissions.AdminRoot))
+        if (_chatTagConfigManager.Config.Groups.Keys.Any(k => string.Equals(k, "ADMIN", StringComparison.OrdinalIgnoreCase)) && _core.Permission.PlayerHasPermission(steamId, _permissions.AdminRoot))
             return true;
         return _permissions.RootBypassPermissions.Any(p =>
             !string.IsNullOrWhiteSpace(p) && _core.Permission.PlayerHasPermission(steamId, p));
@@ -329,7 +329,8 @@ public class EventRegistrar
         var style = _chatTagConfigManager.GetStyleForGroup(groupTag);
         var senderName = sender.Controller.PlayerName ?? LocalizerHelper.Get(_core, "unknown");
         var scopePrefix = teamOnly ? $"{style.ChatColor}{LocalizerHelper.Get(_core, "chat_team_prefix")} " : string.Empty;
-        var formatted = $" \x01{scopePrefix}{style.ChatColor}[ {style.TagColor}{groupTag} {style.ChatColor}] {style.NameColor}{senderName}{style.ChatColor}: {text}";
+        var tagPrefix = string.IsNullOrWhiteSpace(style.TagText) ? "" : $"[ {style.TagColor}{style.TagText} {style.ChatColor}] ";
+        var formatted = $" \x01{scopePrefix}{style.ChatColor}{tagPrefix}{style.NameColor}{senderName}{style.ChatColor}: {text}";
         var senderTeam = sender.Controller.TeamNum;
 
         if (DebugSettings.LoggingEnabled)
@@ -355,7 +356,7 @@ public class EventRegistrar
         var steamId = player.SteamID;
         if (_lastKnownAdminTags.TryGetValue(steamId, out var knownTag) && !string.IsNullOrWhiteSpace(knownTag))
         {
-            return knownTag.Trim();
+            return _chatTagConfigManager.Config.Groups.Keys.Any(k => string.Equals(k, knownTag.Trim(), StringComparison.OrdinalIgnoreCase)) ? knownTag.Trim() : _chatTagConfigManager.Config.PlayerTag;
         }
 
         try
@@ -376,34 +377,37 @@ public class EventRegistrar
                 if (!string.IsNullOrWhiteSpace(primaryGroup))
                 {
                     var resolved = primaryGroup.Trim();
-                    _lastKnownAdminTags[steamId] = resolved;
-                    return resolved;
+                    if (_chatTagConfigManager.Config.Groups.Keys.Any(k => string.Equals(k, resolved, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        _lastKnownAdminTags[steamId] = resolved;
+                        return resolved;
+                    }
                 }
             }
         }
         catch (Exception ex)
         {
             if (DebugSettings.LoggingEnabled)
-                _core.Logger.LogWarningIfEnabled("[CS2Admin][Debug][ChatTag] resolve-cache-error | steamid={SteamId} err={Msg}", steamId, ex.Message);
+                _core.Logger.LogWarningIfEnabled("[Debug][ChatTag] resolve-cache-error | steamid={SteamId} err={Msg}", steamId, ex.Message);
         }
 
         var fromScoreboard = ExtractTagFromScoreboard(player.Controller.Clan);
-        if (!string.IsNullOrWhiteSpace(fromScoreboard))
+        if (!string.IsNullOrWhiteSpace(fromScoreboard) && _chatTagConfigManager.Config.Groups.Keys.Any(k => string.Equals(k, fromScoreboard, StringComparison.OrdinalIgnoreCase)))
         {
             if (DebugSettings.LoggingEnabled)
-                _core.Logger.LogInformationIfEnabled("[CS2Admin][Debug][ChatTag] resolve-from-scoreboard | steamid={SteamId} tag='{Tag}'", steamId, fromScoreboard);
+                _core.Logger.LogInformationIfEnabled("[Debug][ChatTag] resolve-from-scoreboard | steamid={SteamId} tag='{Tag}'", steamId, fromScoreboard);
             return fromScoreboard;
         }
 
         if (_core.Permission.PlayerHasPermission(steamId, _permissions.AdminRoot))
         {
             if (DebugSettings.LoggingEnabled)
-                _core.Logger.LogInformationIfEnabled("[CS2Admin][Debug][ChatTag] resolve-from-adminroot | steamid={SteamId}", steamId);
+                _core.Logger.LogInformationIfEnabled("[Debug][ChatTag] resolve-from-adminroot | steamid={SteamId}", steamId);
             return "ADMIN";
         }
 
         if (DebugSettings.LoggingEnabled)
-            _core.Logger.LogInformationIfEnabled("[CS2Admin][Debug][ChatTag] resolve-fallback | steamid={SteamId} tag='{Tag}'", steamId, _chatTagConfigManager.Config.PlayerTag);
+            _core.Logger.LogInformationIfEnabled("[Debug][ChatTag] resolve-fallback | steamid={SteamId} tag='{Tag}'", steamId, _chatTagConfigManager.Config.PlayerTag);
         return _chatTagConfigManager.Config.PlayerTag;
     }
 
@@ -531,7 +535,7 @@ public class EventRegistrar
             }
             catch (Exception ex)
             {
-                _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error during periodic ban enforcement: {Message}", ex.Message);
+                _core.Logger.LogErrorIfEnabled("Error during periodic ban enforcement: {Message}", ex.Message);
             }
             finally
             {

@@ -1,4 +1,5 @@
 {
+  "admintime_refresh": "Admin süresini yenile",
   "usage_label": "Kullanım",
   "no_permission": "Bu komutu kullanma izniniz yok.",
   "player_not_found": "Oyuncu bulunamadı.",

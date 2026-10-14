@@ -71,7 +71,7 @@ public class VerifyCommand : CommandBase
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] Verify command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "Verify command failed");
         }
     }
 }

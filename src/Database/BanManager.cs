@@ -35,11 +35,11 @@ public class BanManager
         {
             using var connection = _core.Database.GetConnection("mysql_detailed");
             MigrationRunner.RunMigrations(connection);
-            _core.Logger.LogInformationIfEnabled("[CS2_Admin] Ban database initialized successfully");
+            _core.Logger.LogInformationIfEnabled("Ban database initialized successfully");
         }
         catch (Exception ex)
         {
-            _core.Logger.LogWarningIfEnabled("[CS2_Admin] Ban database initialization warning: {Message}", ex.Message);
+            _core.Logger.LogWarningIfEnabled("Ban database initialization warning: {Message}", ex.Message);
         }
     }
 
@@ -53,6 +53,9 @@ public class BanManager
     {
         return AddBanInternalAsync(steamId, targetName, ipAddress, BanTargetType.SteamId, durationMinutes, reason, isGlobal);
     }
+
+    public Task<bool> AddCombinedBanAsync(ulong steamId, string targetName, string ipAddress, int durationMinutes, string reason, bool isGlobal)
+        => AddBanInternalAsync(steamId, targetName, NormalizeIpAddress(ipAddress), BanTargetType.Both, durationMinutes, reason, isGlobal);
 
     public Task<bool> AddIpBanAsync(
         string ipAddress,
@@ -81,7 +84,7 @@ public class BanManager
             var createdAt = DateTime.UtcNow;
             DateTime? expiresAt = durationMinutes > 0 ? createdAt.AddMinutes(durationMinutes) : null;
             // Use numeric values for compatibility with both legacy numeric schemas and current string schemas.
-            var targetTypeValue = targetType == BanTargetType.Ip ? "1" : "0";
+            var targetTypeValue = targetType == BanTargetType.Both ? "2" : targetType == BanTargetType.Ip ? "1" : "0";
 
             var ban = new Ban
             {
@@ -132,7 +135,7 @@ public class BanManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error adding ban: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error adding ban: {Message}", ex.Message);
             return false;
         }
     }
@@ -170,12 +173,12 @@ public class BanManager
                 });
 
             RemoveFromCache(new Ban { TargetType = BanTargetType.SteamId, SteamId = steamId });
-            _core.Logger.LogInformationIfEnabled("[CS2_Admin][Debug] unban steam affected={Count} steamid={SteamId}", affected, steamId);
+            _core.Logger.LogInformationIfEnabled("[Debug] unban steam affected={Count} steamid={SteamId}", affected, steamId);
             return affected;
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error unbanning player: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error unbanning player: {Message}", ex.Message);
             return 0;
         }
     }
@@ -218,12 +221,12 @@ public class BanManager
                 });
 
             RemoveFromCache(new Ban { TargetType = BanTargetType.Ip, IpAddress = normalizedIp });
-            _core.Logger.LogInformationIfEnabled("[CS2_Admin][Debug] unban ip affected={Count} ip={Ip}", affected, normalizedIp);
+            _core.Logger.LogInformationIfEnabled("[Debug] unban ip affected={Count} ip={Ip}", affected, normalizedIp);
             return affected;
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error unbanning ip: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error unbanning ip: {Message}", ex.Message);
             return 0;
         }
     }
@@ -242,7 +245,7 @@ public class BanManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error checking ban: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error checking ban: {Message}", ex.Message);
             return null;
         }
     }
@@ -257,7 +260,7 @@ public class BanManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error checking fresh ban: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error checking fresh ban: {Message}", ex.Message);
             return null;
         }
     }
@@ -320,8 +323,8 @@ public class BanManager
             }
 
             var mapped = ToBan(row);
-            var matchesTarget = (steamId > 0 && mapped.TargetType == BanTargetType.SteamId && mapped.SteamId == steamId)
-                                || (mapped.TargetType == BanTargetType.Ip && !string.IsNullOrWhiteSpace(normalizedIp) && NormalizeIpAddress(mapped.IpAddress) == normalizedIp);
+            var matchesTarget = (steamId > 0 && (mapped.TargetType is BanTargetType.SteamId or BanTargetType.Both) && mapped.SteamId == steamId)
+                                || ((mapped.TargetType is BanTargetType.Ip or BanTargetType.Both) && !string.IsNullOrWhiteSpace(normalizedIp) && NormalizeIpAddress(mapped.IpAddress) == normalizedIp);
             if (!matchesTarget)
             {
                 continue;
@@ -405,7 +408,7 @@ public class BanManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error checking enforcement ban: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error checking enforcement ban: {Message}", ex.Message);
             return null;
         }
     }
@@ -455,11 +458,11 @@ public class BanManager
 
     private void CacheBan(Ban ban)
     {
-        if (ban.TargetType == BanTargetType.SteamId && ban.SteamId != 0)
+        if ((ban.TargetType is BanTargetType.SteamId or BanTargetType.Both) && ban.SteamId != 0)
         {
             _banCache[GetSteamKey(ban.SteamId)] = new CacheEntry(ban, DateTime.UtcNow);
         }
-        else if (ban.TargetType == BanTargetType.Ip && !string.IsNullOrWhiteSpace(ban.IpAddress))
+        if ((ban.TargetType is BanTargetType.Ip or BanTargetType.Both) && !string.IsNullOrWhiteSpace(ban.IpAddress))
         {
             _banCache[GetIpKey(ban.IpAddress)] = new CacheEntry(ban, DateTime.UtcNow);
         }
@@ -467,11 +470,11 @@ public class BanManager
 
     private void RemoveFromCache(Ban ban)
     {
-        if (ban.TargetType == BanTargetType.SteamId && ban.SteamId != 0)
+        if ((ban.TargetType is BanTargetType.SteamId or BanTargetType.Both) && ban.SteamId != 0)
         {
             _banCache.TryRemove(GetSteamKey(ban.SteamId), out _);
         }
-        else if (ban.TargetType == BanTargetType.Ip && !string.IsNullOrWhiteSpace(ban.IpAddress))
+        if ((ban.TargetType is BanTargetType.Ip or BanTargetType.Both) && !string.IsNullOrWhiteSpace(ban.IpAddress))
         {
             _banCache.TryRemove(GetIpKey(ban.IpAddress), out _);
         }
@@ -573,7 +576,7 @@ public class BanManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error getting total bans: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error getting total bans: {Message}", ex.Message);
             return 0;
         }
     }
@@ -658,7 +661,7 @@ public class BanManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogWarningIfEnabled("[CS2_Admin] Failed to find active bans by name '{Name}': {Message}", targetName, ex.Message);
+            _core.Logger.LogWarningIfEnabled("Failed to find active bans by name '{Name}': {Message}", targetName, ex.Message);
             return [];
         }
     }
@@ -681,13 +684,13 @@ public class BanManager
 
             if (cleaned > 0)
             {
-                _core.Logger.LogInformationIfEnabled("[CS2_Admin] Marked {Count} bans as expired", cleaned);
+                _core.Logger.LogInformationIfEnabled("Marked {Count} bans as expired", cleaned);
                 _banCache.Clear();
             }
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error cleaning expired bans: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error cleaning expired bans: {Message}", ex.Message);
         }
     }
 
@@ -727,6 +730,8 @@ public class BanManager
             return BanTargetType.Ip;
         }
 
+        if (targetType == "2" || targetType.Equals("both", StringComparison.OrdinalIgnoreCase))
+            return BanTargetType.Both;
         return BanTargetType.SteamId;
     }
 

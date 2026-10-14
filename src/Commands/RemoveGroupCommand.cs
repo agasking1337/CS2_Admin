@@ -57,7 +57,7 @@ public class RemoveGroupCommand : CommandBase
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] RemoveGroup command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "RemoveGroup command failed");
         }
     }
 }

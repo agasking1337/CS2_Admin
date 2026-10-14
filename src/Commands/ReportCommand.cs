@@ -62,7 +62,7 @@ public class ReportCommand : CommandBase
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] Report command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "Report command failed");
         }
     }
 

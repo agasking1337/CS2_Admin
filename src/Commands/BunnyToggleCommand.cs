@@ -43,7 +43,7 @@ public class BunnyToggleCommand : CommandBase
                 Core.Engine.ExecuteCommand("sv_autobunnyhopping 0");
                 BroadcastNotification(adminName, "bunny_disabled");
                 _ = AdminLogManager.AddLogAsync("bunnyoff", adminName, context.Sender?.SteamID ?? 0, null, null, "sv_enablebunnyhopping=0;sv_autobunnyhopping=0");
-                Core.Logger.LogInformation("[CS2_Admin] {Admin} disabled bunny hop", adminName);
+                Core.Logger.LogInformation("{Admin} disabled bunny hop", adminName);
             }
             else
             {
@@ -51,12 +51,12 @@ public class BunnyToggleCommand : CommandBase
                 Core.Engine.ExecuteCommand("sv_autobunnyhopping 1");
                 BroadcastNotification(adminName, "bunny_enabled");
                 _ = AdminLogManager.AddLogAsync("bunnyon", adminName, context.Sender?.SteamID ?? 0, null, null, "sv_enablebunnyhopping=1;sv_autobunnyhopping=1");
-                Core.Logger.LogInformation("[CS2_Admin] {Admin} enabled bunny hop", adminName);
+                Core.Logger.LogInformation("{Admin} enabled bunny hop", adminName);
             }
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] BunnyToggle command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "BunnyToggle command failed");
         }
     }
 }

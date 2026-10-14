@@ -56,7 +56,7 @@ public class ListGroupsCommand : CommandBase
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] ListGroups command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "ListGroups command failed");
         }
     }
 }

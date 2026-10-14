@@ -16,7 +16,7 @@ public class MigrationRunner
     {
         try
         {
-            core?.Logger.LogInformationIfEnabled("[CS2Admin] Applying database migrations...");
+            core?.Logger.LogInformationIfEnabled("Applying database migrations...");
 
             using var loggerFactory = LoggerFactory.Create(builder =>
             {
@@ -42,11 +42,11 @@ public class MigrationRunner
                 runner.MigrateUp();
             }
 
-            core?.Logger.LogInformationIfEnabled("[CS2Admin] Database migrations applied successfully.");
+            core?.Logger.LogInformationIfEnabled("Database migrations applied successfully.");
         }
         catch (Exception ex)
         {
-            core?.Logger.LogErrorIfEnabled(ex, "[CS2Admin] Database migrations failed");
+            core?.Logger.LogErrorIfEnabled(ex, "Database migrations failed");
             throw;
         }
     }

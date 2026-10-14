@@ -48,7 +48,7 @@ public class DiscordServerStatusService
             var mapName = ServerIdentity.GetCurrentMap(_core);
             if (IsUnknownMapName(mapName))
             {
-                _core.Logger.LogInformationIfEnabled("[CS2_Admin] Skipping Discord server status publish because current map is unknown.");
+                _core.Logger.LogInformationIfEnabled("Skipping Discord server status publish because current map is unknown.");
                 return;
             }
 
@@ -66,7 +66,7 @@ public class DiscordServerStatusService
         }
         catch (Exception ex)
         {
-            _core.Logger.LogWarningIfEnabled("[CS2_Admin] Error publishing shared server status: {Message}", ex.Message);
+            _core.Logger.LogWarningIfEnabled("Error publishing shared server status: {Message}", ex.Message);
         }
     }
 
@@ -83,7 +83,7 @@ public class DiscordServerStatusService
             if (IsUnknownMapName(status.MapName))
             {
                 await RemoveServerStatusMessageAsync();
-                _core.Logger.LogInformationIfEnabled("[CS2_Admin] Skipping Discord server status message because current map is unknown.");
+                _core.Logger.LogInformationIfEnabled("Skipping Discord server status message because current map is unknown.");
                 return;
             }
 
@@ -139,7 +139,7 @@ public class DiscordServerStatusService
         }
         catch (Exception ex)
         {
-            _core.Logger.LogWarningIfEnabled("[CS2_Admin] Error updating server status message: {Message}", ex.Message);
+            _core.Logger.LogWarningIfEnabled("Error updating server status message: {Message}", ex.Message);
         }
     }
 
