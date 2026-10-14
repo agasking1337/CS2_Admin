@@ -7,7 +7,7 @@
 
 ## Overview
 
-**CS2 Admin (Upgraded)** is an all-in-one administration plugin for Counter-Strike 2 servers running on SwiftlyS2. While standard admin plugins offer basic ban and mute functionality, **CS2_Admin** goes significantly further by integrating **Live Discord Server Statuses**, **Interactive Fun Commands**, **Comprehensive Reporting**, and a fully automated **GitHub Auto-Updater**.
+**CS2_Admin (Upgraded)** is an all-in-one administration plugin for Counter-Strike 2 servers running on SwiftlyS2. While standard admin plugins offer basic ban and mute functionality, **CS2_Admin** goes significantly further by integrating **Live Discord Server Statuses**, **Interactive Fun Commands**, **Comprehensive Reporting**, and a fully automated **GitHub Auto-Updater**.
 
 This plugin provides a database-driven foundation for managing admins, permissions, player sanctions, and server features. Designed to be feature-rich yet highly customizable, it completely overhauls the standard admin experience.
 
