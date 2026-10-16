@@ -47,11 +47,11 @@ public class RestartCommand : CommandBase
             Core.Engine.ExecuteCommand($"mp_restartgame {seconds}");
 
             _ = AdminLogManager.AddLogAsync("restart", adminName, context.Sender?.SteamID ?? 0, null, null, $"seconds={seconds}");
-            Core.Logger.LogInformation("[CS2_Admin] {Admin} restarted the game in {Seconds} second(s)", adminName, seconds);
+            Core.Logger.LogInformation("{Admin} restarted the game in {Seconds} second(s)", adminName, seconds);
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] Restart command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "Restart command failed");
         }
     }
 }

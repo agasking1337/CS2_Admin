@@ -57,11 +57,11 @@ public class SayCommand : CommandBase
             }
 
             _ = AdminLogManager.AddLogAsync("say", adminName, context.Sender?.SteamID ?? 0, null, null, $"message={messageText}");
-            Core.Logger.LogInformationIfEnabled("[CS2_Admin] SAY from {Admin}: {Message}", adminName, messageText);
+            Core.Logger.LogInformationIfEnabled("SAY from {Admin}: {Message}", adminName, messageText);
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] Say command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "Say command failed");
         }
     }
 }

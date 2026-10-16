@@ -58,7 +58,7 @@ public class UnburyCommand : CommandBase
                 BroadcastNotification(adminName, "unbury_notification", FormatTargetName(targets));
 
                 _ = AdminLogManager.AddLogAsync("unbury", adminName, ctx.Sender?.SteamID ?? 0, null, null, $"targets={targets.Count}");
-                Core.Logger.LogInformationIfEnabled("[CS2_Admin] {Admin} unburied {Count} player(s)", adminName, targets.Count);
+                Core.Logger.LogInformationIfEnabled("{Admin} unburied {Count} player(s)", adminName, targets.Count);
             });
     }
 }

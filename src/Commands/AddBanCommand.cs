@@ -76,7 +76,7 @@ public class AddBanCommand : BanCommandBase
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] AddBan command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "AddBan command failed");
         }
     }
 

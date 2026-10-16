@@ -56,11 +56,11 @@ public class HsayCommand : CommandBase
             }
 
             _ = AdminLogManager.AddLogAsync("hsay", adminName, context.Sender?.SteamID ?? 0, null, null, $"message={messageText}");
-            Core.Logger.LogInformationIfEnabled("[CS2_Admin] HSAY from {Admin}: {Message}", adminName, messageText);
+            Core.Logger.LogInformationIfEnabled("HSAY from {Admin}: {Message}", adminName, messageText);
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] Hsay command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "Hsay command failed");
         }
     }
 }

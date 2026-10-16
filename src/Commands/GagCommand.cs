@@ -123,7 +123,7 @@ public sealed class GagCommand : CommandBase
                 }
 
                 await _sanctionStateService.RefreshAsync(target.SteamId, target.IpAddress);
-                Core.Logger.LogInformationIfEnabled("[CS2_Admin][Debug] gag apply steamid={SteamId} duration={Duration} reason={Reason}", target.SteamId, duration, reason);
+                Core.Logger.LogInformationIfEnabled("[Debug] gag apply steamid={SteamId} duration={Duration} reason={Reason}", target.SteamId, duration, reason);
                 var durationText = duration <= 0 ? L("duration_permanently") : L("duration_for_minutes", duration);
 
                 await OnMainThreadAsync(() =>
@@ -142,13 +142,13 @@ public sealed class GagCommand : CommandBase
 
                 await AdminLogManager.AddLogAsync("gag", adminName, adminSteamId, target.SteamId, target.IpAddress, $"duration={duration};reason={reason}", target.Name, target.PlayerId, reason);
 
-                Core.Logger.LogInformationIfEnabled("[CS2_Admin] {Admin} gagged {Target} for {Duration} minutes. Reason: {Reason}",
+                Core.Logger.LogInformationIfEnabled("{Admin} gagged {Target} for {Duration} minutes. Reason: {Reason}",
                     adminName, target.Name, duration, reason);
             }
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] Gag command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "Gag command failed");
         }
     }
 

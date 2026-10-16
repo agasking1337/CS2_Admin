@@ -54,11 +54,11 @@ public class RconCommand : CommandBase
             }
 
             _ = AdminLogManager.AddLogAsync("rcon", adminName, context.Sender?.SteamID ?? 0, null, null, $"command={command}");
-            Core.Logger.LogInformation("[CS2_Admin] {Admin} executed rcon: {Command}", adminName, command);
+            Core.Logger.LogInformation("{Admin} executed rcon: {Command}", adminName, command);
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] Rcon command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "Rcon command failed");
         }
     }
 }

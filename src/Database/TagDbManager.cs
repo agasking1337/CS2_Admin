@@ -23,11 +23,11 @@ public class TagDbManager
     {
         try
         {
-            _core.Logger.LogInformationIfEnabled("[CS2_Admin] Admin tags database initialized successfully");
+            _core.Logger.LogInformationIfEnabled("Admin tags database initialized successfully");
         }
         catch (Exception ex)
         {
-            _core.Logger.LogWarningIfEnabled("[CS2_Admin] Admin tags database initialization warning: {Message}", ex.Message);
+            _core.Logger.LogWarningIfEnabled("Admin tags database initialization warning: {Message}", ex.Message);
         }
     }
 
@@ -44,7 +44,7 @@ public class TagDbManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error getting tags: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error getting tags: {Message}", ex.Message);
             return [];
         }
     }
@@ -75,7 +75,7 @@ public class TagDbManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error getting tag for group {Group}: {Message}", groupName, ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error getting tag for group {Group}: {Message}", groupName, ex.Message);
             return null;
         }
     }
@@ -158,7 +158,7 @@ public class TagDbManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error adding/updating tag for group {Group}: {Message}", groupName, ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error adding/updating tag for group {Group}: {Message}", groupName, ex.Message);
             return false;
         }
     }
@@ -183,7 +183,7 @@ public class TagDbManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error removing tag for group {Group}: {Message}", groupName, ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error removing tag for group {Group}: {Message}", groupName, ex.Message);
             return false;
         }
     }
@@ -219,7 +219,7 @@ public class TagDbManager
 
         if (changed)
         {
-            _core.Logger.LogInformationIfEnabled("[CS2_Admin] Admin tags synchronized with groups");
+            _core.Logger.LogInformationIfEnabled("Admin tags synchronized with groups");
         }
     }
 

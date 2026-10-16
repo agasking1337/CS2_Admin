@@ -56,7 +56,7 @@ public class ListAdminsCommand : CommandBase
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] ListAdmins command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "ListAdmins command failed");
         }
     }
 }

@@ -42,7 +42,7 @@ public class RespawnToggleCommand : CommandBase
                 Core.Engine.ExecuteCommand("mp_respawn_on_death_t 0");
                 BroadcastNotification(adminName, "respawn_mode_disabled");
                 _ = AdminLogManager.AddLogAsync("respawnoff", adminName, context.Sender?.SteamID ?? 0, null, null, "mp_respawn_on_death_ct=0;mp_respawn_on_death_t=0");
-                Core.Logger.LogInformation("[CS2_Admin] {Admin} disabled instant respawn mode", adminName);
+                Core.Logger.LogInformation("{Admin} disabled instant respawn mode", adminName);
             }
             else
             {
@@ -50,12 +50,12 @@ public class RespawnToggleCommand : CommandBase
                 Core.Engine.ExecuteCommand("mp_respawn_on_death_t 1");
                 BroadcastNotification(adminName, "respawn_mode_enabled");
                 _ = AdminLogManager.AddLogAsync("respawnon", adminName, context.Sender?.SteamID ?? 0, null, null, "mp_respawn_on_death_ct=1;mp_respawn_on_death_t=1");
-                Core.Logger.LogInformation("[CS2_Admin] {Admin} enabled instant respawn mode", adminName);
+                Core.Logger.LogInformation("{Admin} enabled instant respawn mode", adminName);
             }
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] RespawnToggle command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "RespawnToggle command failed");
         }
     }
 }

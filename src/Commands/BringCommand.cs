@@ -97,7 +97,7 @@ public class BringCommand : CommandBase
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] Bring command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "Bring command failed");
         }
     }
 }

@@ -139,7 +139,7 @@ public class DiscordRestClient
     private async Task<string?> CreateMessageAsync(string channelId, object payload)
     {
         var endpoint = $"{DiscordApiBaseUrl}/channels/{channelId}/messages";
-        // _core.Logger.LogInformationIfEnabled("[CS2_Admin][Debug][DiscordREST] create message request channel={ChannelId}", DiscordHelpers.MaskChannelId(channelId));
+        // _core.Logger.LogInformationIfEnabled("[Debug][DiscordREST] create message request channel={ChannelId}", DiscordHelpers.MaskChannelId(channelId));
         using var request = BuildDiscordRequest(HttpMethod.Post, endpoint, payload);
         using var response = await _httpClient.SendAsync(request);
         if (!response.IsSuccessStatusCode)
@@ -522,7 +522,7 @@ public class DiscordRestClient
         }
 
         _configurationWarningTimestamps[key] = now;
-        _core.Logger.LogWarningIfEnabled("[CS2_Admin] Discord bot cannot {Action}: {Reason}.", action, reason);
+        _core.Logger.LogWarningIfEnabled("Discord bot cannot {Action}: {Reason}.", action, reason);
     }
 
     private sealed class DiscordMessageResponse

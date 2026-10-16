@@ -51,11 +51,11 @@ public class AdminLogManager
         {
             using var connection = _core.Database.GetConnection("mysql_detailed");
             MigrationRunner.RunMigrations(connection);
-            _core.Logger.LogInformationIfEnabled("[CS2_Admin] Admin log database initialized successfully");
+            _core.Logger.LogInformationIfEnabled("Admin log database initialized successfully");
         }
         catch (Exception ex)
         {
-            _core.Logger.LogWarningIfEnabled("[CS2_Admin] Admin log database initialization warning: {Message}", ex.Message);
+            _core.Logger.LogWarningIfEnabled("Admin log database initialization warning: {Message}", ex.Message);
         }
     }
 
@@ -109,7 +109,7 @@ public class AdminLogManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error writing admin log to database: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error writing admin log to database: {Message}", ex.Message);
         }
 
         try
@@ -128,7 +128,7 @@ public class AdminLogManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error sending discord admin log: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error sending discord admin log: {Message}", ex.Message);
         }
     }
     private bool ShouldSendAdminActionWebhook(string action, ulong adminSteamId)
@@ -235,7 +235,7 @@ public class AdminLogManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error getting target history: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error getting target history: {Message}", ex.Message);
             return new List<AdminLog>();
         }
     }

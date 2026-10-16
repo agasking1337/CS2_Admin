@@ -84,7 +84,7 @@ public class BurnCommand : CommandBase
                 BroadcastNotification(adminName, "burn_notification", FormatTargetName(targets), durationLabel, damagePerTick);
 
                 _ = AdminLogManager.AddLogAsync("burn", adminName, ctx.Sender?.SteamID ?? 0, null, null, $"targets={validCount};duration={(isInfinite ? "infinite" : durationSeconds.ToString())};dmg={damagePerTick}");
-                Core.Logger.LogInformationIfEnabled("[CS2_Admin] {Admin} set {Count} player(s) on fire", adminName, validCount);
+                Core.Logger.LogInformationIfEnabled("{Admin} set {Count} player(s) on fire", adminName, validCount);
             });
     }
 

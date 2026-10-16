@@ -104,7 +104,7 @@ public static class PlayerUtils
 
         if (!includeDeadPlayers)
         {
-            players = players.Where(p => p.PlayerPawn?.IsValid == true && p.PlayerPawn.Health > 0).ToList();
+            players = players.Where(p => p.Controller.TeamNum is 2 or 3 && p.PlayerPawn?.IsValid == true && p.PlayerPawn.Health > 0).ToList();
         }
 
         // Special group targets
@@ -128,13 +128,13 @@ public static class PlayerUtils
                 return players.Where(p => !p.IsFakeClient).ToList();
             case "@me":
                 if (caller != null && caller.IsValid)
-                    return new List<IPlayer> { caller };
+                    return includeDeadPlayers || ((caller.Controller.TeamNum is 2 or 3) && caller.PlayerPawn?.IsValid == true && caller.PlayerPawn.Health > 0) ? new List<IPlayer> { caller } : new List<IPlayer>();
                 break;
         }
 
         // Single player target
         var player = FindPlayerByTarget(core, normalizedTarget, caller);
-        return player != null ? new List<IPlayer> { player } : new List<IPlayer>();
+        return player != null && (includeDeadPlayers || ((player.Controller.TeamNum is 2 or 3) && player.PlayerPawn?.IsValid == true && player.PlayerPawn.Health > 0)) ? new List<IPlayer> { player } : new List<IPlayer>();
     }
 
     public static bool IsGroupTarget(string target)
@@ -239,6 +239,8 @@ public static class PlayerUtils
             return;
         }
 
+        // No configured tag means this plugin does not own the player's original CS2 clan tag.
+        if (string.IsNullOrWhiteSpace(tag)) return;
         var normalized = BuildScoreboardTag(player, tag);
         if (player.Controller.Clan == normalized)
         {

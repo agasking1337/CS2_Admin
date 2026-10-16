@@ -92,7 +92,7 @@ public class AddAdminCommand : CommandBase
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] AddAdmin command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "AddAdmin command failed");
         }
     }
 
@@ -122,17 +122,19 @@ public class AddAdminCommand : CommandBase
         string tag;
         if (admin != null && admin.IsActive)
         {
-            tag = GroupDbManager.GetPrimaryGroupNameSync(admin.GroupList) ?? admin.GroupList.FirstOrDefault() ?? "ADMIN";
+            tag = GroupDbManager.GetPrimaryGroupNameSync(admin.GroupList) ?? admin.GroupList.FirstOrDefault() ?? "";
         }
         else if (PermissionService.HasPermission(steamId, Permissions.AdminRoot))
         {
-            tag = "ADMIN";
+            tag = "";
         }
         else
         {
             tag = Tags.PlayerTag;
         }
 
-        PlayerUtils.SetScoreTagReliable(Core, player.PlayerID, tag);
+        if (ChatTagConfigManager.Config.ScoreboardEnabled &&
+            ChatTagConfigManager.Config.Groups.ContainsKey(tag))
+            PlayerUtils.SetScoreTagReliable(Core, player.PlayerID, tag);
     }
 }

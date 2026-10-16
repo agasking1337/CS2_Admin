@@ -123,7 +123,7 @@ public sealed class MuteCommand : CommandBase
                 }
 
                 await _sanctionStateService.RefreshAsync(target.SteamId, target.IpAddress);
-                Core.Logger.LogInformationIfEnabled("[CS2_Admin][Debug] mute apply steamid={SteamId} duration={Duration} reason={Reason}", target.SteamId, duration, reason);
+                Core.Logger.LogInformationIfEnabled("[Debug] mute apply steamid={SteamId} duration={Duration} reason={Reason}", target.SteamId, duration, reason);
                 var durationText = duration <= 0 ? L("duration_permanently") : L("duration_for_minutes", duration);
 
                 await OnMainThreadAsync(() =>
@@ -142,13 +142,13 @@ public sealed class MuteCommand : CommandBase
 
                 await AdminLogManager.AddLogAsync("mute", adminName, adminSteamId, target.SteamId, target.IpAddress, $"duration={duration};reason={reason}", target.Name, target.PlayerId, reason);
 
-                Core.Logger.LogInformationIfEnabled("[CS2_Admin] {Admin} muted {Target} for {Duration} minutes. Reason: {Reason}",
+                Core.Logger.LogInformationIfEnabled("{Admin} muted {Target} for {Duration} minutes. Reason: {Reason}",
                     adminName, target.Name, duration, reason);
             }
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] Mute command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "Mute command failed");
             Reply(context, "internal_error");
         }
     }

@@ -24,7 +24,7 @@ public class DiscordMessageStateDbManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogWarningIfEnabled("[CS2_Admin] Discord message state initialization warning: {Message}", ex.Message);
+            _core.Logger.LogWarningIfEnabled("Discord message state initialization warning: {Message}", ex.Message);
         }
 
         return Task.CompletedTask;
@@ -40,7 +40,7 @@ public class DiscordMessageStateDbManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error reading discord message state: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error reading discord message state: {Message}", ex.Message);
             return Task.FromResult<string?>(null);
         }
     }
@@ -71,7 +71,7 @@ public class DiscordMessageStateDbManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error writing discord message state: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error writing discord message state: {Message}", ex.Message);
         }
 
         return Task.CompletedTask;

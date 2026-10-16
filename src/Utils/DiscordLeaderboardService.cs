@@ -45,7 +45,7 @@ public class DiscordLeaderboardService
         }
         catch (Exception ex)
         {
-            _core.Logger.LogWarningIfEnabled("[CS2_Admin] Error updating leaderboard messages: {Message}", ex.Message);
+            _core.Logger.LogWarningIfEnabled("Error updating leaderboard messages: {Message}", ex.Message);
         }
     }
 

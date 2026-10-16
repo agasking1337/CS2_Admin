@@ -82,12 +82,12 @@ public class RenameCommand : CommandBase
                     $" \x02{L("prefix")}\x01 {L("rename_personal_chat", newName, ResolveVisibleAdminName(liveTarget, adminName))}");
 
                 _ = AdminLogManager.AddLogAsync("rename", adminName, context.Sender?.SteamID ?? 0, liveTarget.SteamID, liveTarget.IPAddress, $"new_name={newName}", targetName);
-                Core.Logger.LogInformationIfEnabled("[CS2_Admin] {Admin} renamed {Target} to {NewName}", adminName, targetName, newName);
+                Core.Logger.LogInformationIfEnabled("{Admin} renamed {Target} to {NewName}", adminName, targetName, newName);
             });
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] Rename command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "Rename command failed");
         }
     }
 }

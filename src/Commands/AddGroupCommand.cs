@@ -59,7 +59,7 @@ public class AddGroupCommand : CommandBase
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] AddGroup command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "AddGroup command failed");
         }
     }
 }

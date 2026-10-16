@@ -64,7 +64,7 @@ public class LastBanCommand : BanCommandBase
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] LastBan command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "LastBan command failed");
         }
     }
 

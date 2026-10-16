@@ -65,7 +65,7 @@ public class DiscordGatewayClient
             }
             catch (Exception ex)
             {
-                _core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] Discord gateway socket abort failed");
+                _core.Logger.LogErrorIfEnabled(ex, "Discord gateway socket abort failed");
             }
 
             _socket = null;
@@ -100,7 +100,7 @@ public class DiscordGatewayClient
             }
             catch (Exception ex)
             {
-                _core.Logger.LogWarningIfEnabled("[CS2_Admin] Discord gateway connection failed: {Message}", ex.Message);
+                _core.Logger.LogWarningIfEnabled("Discord gateway connection failed: {Message}", ex.Message);
             }
             finally
             {
@@ -110,7 +110,7 @@ public class DiscordGatewayClient
 
             if (_fatalClose)
             {
-                _core.Logger.LogErrorIfEnabled("[CS2_Admin] Discord gateway closed with a fatal code; not reconnecting. Fix the bot token/intents and reload the plugin.");
+                _core.Logger.LogErrorIfEnabled("Discord gateway closed with a fatal code; not reconnecting. Fix the bot token/intents and reload the plugin.");
                 break;
             }
 
@@ -155,7 +155,7 @@ public class DiscordGatewayClient
             if (result.MessageType == WebSocketMessageType.Close)
             {
                 var code = (int?)result.CloseStatus ?? 0;
-                _core.Logger.LogWarningIfEnabled("[CS2_Admin] Discord gateway closed by server code={Code} reason={Reason}", code, result.CloseStatusDescription ?? string.Empty);
+                _core.Logger.LogWarningIfEnabled("Discord gateway closed by server code={Code} reason={Reason}", code, result.CloseStatusDescription ?? string.Empty);
 
                 if (code == 4014 && _useMembersIntent)
                 {
@@ -163,7 +163,7 @@ public class DiscordGatewayClient
                     _sessionId = null;
                     _sequence = null;
                     _resumeGatewayUrl = null;
-                    _core.Logger.LogErrorIfEnabled("[CS2_Admin] Discord gateway rejected the privileged GUILD_MEMBERS intent. Enable 'Server Members Intent' in the Discord Developer Portal (Bot tab) to auto-unlink members who leave. Retrying without it so buttons keep working.");
+                    _core.Logger.LogErrorIfEnabled("Discord gateway rejected the privileged GUILD_MEMBERS intent. Enable 'Server Members Intent' in the Discord Developer Portal (Bot tab) to auto-unlink members who leave. Retrying without it so buttons keep working.");
                 }
                 else if (code is 4004 or 4010 or 4011 or 4012 or 4013 or 4014)
                 {
@@ -183,7 +183,7 @@ public class DiscordGatewayClient
                 }
                 catch (Exception ex)
                 {
-                    _core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] Discord gateway close failed");
+                    _core.Logger.LogErrorIfEnabled(ex, "Discord gateway close failed");
                 }
 
                 return null;
@@ -268,7 +268,7 @@ public class DiscordGatewayClient
                         if (!TryAcquireIdentifySlot())
                         {
                             _fatalClose = true;
-                            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Discord gateway identify limit reached ({Max}/hour); stopping to protect the bot token.", MaxIdentifiesPerHour);
+                            _core.Logger.LogErrorIfEnabled("Discord gateway identify limit reached ({Max}/hour); stopping to protect the bot token.", MaxIdentifiesPerHour);
                             socket.Abort();
                             return;
                         }
@@ -323,7 +323,7 @@ public class DiscordGatewayClient
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] Discord gateway reconnect close failed");
+            _core.Logger.LogErrorIfEnabled(ex, "Discord gateway reconnect close failed");
             try { socket.Abort(); } catch { }
         }
     }
@@ -340,7 +340,7 @@ public class DiscordGatewayClient
             {
                 if (!_heartbeatAcked)
                 {
-                    _core.Logger.LogWarningIfEnabled("[CS2_Admin] Discord gateway heartbeat not acknowledged; reconnecting (session kept for resume).");
+                    _core.Logger.LogWarningIfEnabled("Discord gateway heartbeat not acknowledged; reconnecting (session kept for resume).");
                     socket.Abort();
                     return;
                 }
@@ -355,7 +355,7 @@ public class DiscordGatewayClient
         }
         catch (Exception ex)
         {
-            _core.Logger.LogWarningIfEnabled("[CS2_Admin] Discord gateway heartbeat loop ended: {Message}", ex.Message);
+            _core.Logger.LogWarningIfEnabled("Discord gateway heartbeat loop ended: {Message}", ex.Message);
         }
     }
 

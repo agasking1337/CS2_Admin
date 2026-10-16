@@ -43,7 +43,7 @@ public sealed class AfkManagerService
         if (!_config.Enabled)
         {
             Stop();
-            _core.Logger.LogInformationIfEnabled("[CS2_Admin][Debug][AFK] manager disabled by config");
+            _core.Logger.LogInformationIfEnabled("[Debug][AFK] manager disabled by config");
             return;
         }
 
@@ -51,7 +51,7 @@ public sealed class AfkManagerService
         Stop();
         _states.Clear();
         _timerCts = _core.Scheduler.DelayAndRepeatBySeconds(CheckIntervalSeconds, CheckIntervalSeconds, CheckPlayers);
-        _core.Logger.LogInformationIfEnabled("[CS2_Admin][Debug][AFK] manager started timer={Timer} skipWarmup={SkipWarmup} skipAdmin={SkipAdmin}", GetAfkSeconds(), _config.SkipWarmup, _config.AfkSkipAdmin);
+        _core.Logger.LogInformationIfEnabled("[Debug][AFK] manager started timer={Timer} skipWarmup={SkipWarmup} skipAdmin={SkipAdmin}", GetAfkSeconds(), _config.SkipWarmup, _config.AfkSkipAdmin);
     }
 
     public void Stop()
@@ -85,7 +85,7 @@ public sealed class AfkManagerService
         {
             _isWarmup = true;
             _states.Clear();
-            _core.Logger.LogInformationIfEnabled("[CS2_Admin][Debug][AFK] warmup started");
+            _core.Logger.LogInformationIfEnabled("[Debug][AFK] warmup started");
             return HookResult.Continue;
         });
 
@@ -93,7 +93,7 @@ public sealed class AfkManagerService
         {
             _isWarmup = false;
             _states.Clear();
-            _core.Logger.LogInformationIfEnabled("[CS2_Admin][Debug][AFK] round started");
+            _core.Logger.LogInformationIfEnabled("[Debug][AFK] round started");
             return HookResult.Continue;
         });
     }
@@ -236,7 +236,7 @@ public sealed class AfkManagerService
                 live.SendChat($" \x02{PluginLocalizer.Get(_core)["prefix"]}\x01 {L("afk_self_spec", "You moved yourself to spectator.")}");
             }
 
-            _core.Logger.LogInformationIfEnabled("[CS2_Admin][Debug][AFK] moved steamid={SteamId} name={Name} reason={Reason}", live.SteamID, name, reason);
+            _core.Logger.LogInformationIfEnabled("[Debug][AFK] moved steamid={SteamId} name={Name} reason={Reason}", live.SteamID, name, reason);
         });
     }
 
@@ -250,7 +250,7 @@ public sealed class AfkManagerService
             }
             catch (Exception ex)
             {
-                _core.Logger.LogWarningIfEnabled("[CS2_Admin][Debug][AFK] warning sound failed: {Message}", ex.Message);
+                _core.Logger.LogWarningIfEnabled("[Debug][AFK] warning sound failed: {Message}", ex.Message);
             }
         }
 
@@ -282,18 +282,9 @@ public sealed class AfkManagerService
 
     private string L(string key, string fallback, params object[] args)
     {
-        try
-        {
-            var localizer = PluginLocalizer.Get(_core);
-            var value = args.Length == 0 ? localizer[key] : localizer[key, args];
-            return string.Equals(value, key, StringComparison.OrdinalIgnoreCase)
-                ? (args.Length == 0 ? fallback : string.Format(System.Globalization.CultureInfo.InvariantCulture, fallback, args))
-                : value;
-        }
-        catch
-        {
-            return args.Length == 0 ? fallback : string.Format(System.Globalization.CultureInfo.InvariantCulture, fallback, args);
-        }
+        // The HU translation uses {seconds}/{player}, EN uses {0}.
+        // LocalizerHelper normalizes either form before substitution.
+        return global::CS2_Admin.Services.LocalizerHelper.GetWithFallback(_core, key, fallback, args);
     }
 
     private float GetAfkSeconds()

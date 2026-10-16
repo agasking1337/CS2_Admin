@@ -6,7 +6,7 @@ public class PluginConfig
 {
     public const int CurrentVersion = 10;
     public int Version { get; set; } = CurrentVersion;
-    public bool AutoUpdate { get; set; } = true;
+    public bool AutoUpdate { get; set; } = false;
     public bool Debug { get; set; } = false;
     public string Language { get; set; } = "en";
     public List<string> LanguageOptions { get; set; } = ["en", "tr", "de", "ru", "hu"];
@@ -117,7 +117,7 @@ public class ChatTagsFileConfig
     // Legacy alias for older tags.json files.
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public bool? Enabled { get; set; } = null;
-    public Dictionary<string, ChatTagGroupStyle> Groups { get; set; } = new();
+    public Dictionary<string, ChatTagGroupStyle> Groups { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 }
 
 public class ChatTagGroupStyle

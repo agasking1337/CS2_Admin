@@ -113,12 +113,12 @@ public class UnwarnCommand : CommandBase
             });
 
             await AdminLogManager.AddLogAsync("unwarn", adminName, adminSteamId, targetSteamId, targetIp, $"reason={reason}", targetName, targetPlayerId, reason);
-            Core.Logger.LogInformationIfEnabled("[CS2_Admin] {Admin} removed warn from {Target}. Reason: {Reason}",
+            Core.Logger.LogInformationIfEnabled("{Admin} removed warn from {Target}. Reason: {Reason}",
                 adminName, targetName, reason);
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] Unwarn command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "Unwarn command failed");
         }
     }
 

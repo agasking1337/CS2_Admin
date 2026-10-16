@@ -70,7 +70,7 @@ public class GravityCommand : CommandBase
                     }
                     catch
                     {
-                        try { pawn.GravityScale = scale; } catch (Exception ex) { Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] GravityScale fallback failed for {SteamId}", target.SteamID); }
+                        try { pawn.GravityScale = scale; } catch (Exception ex) { Core.Logger.LogErrorIfEnabled(ex, "GravityScale fallback failed for {SteamId}", target.SteamID); }
                     }
 
                     applied++;
@@ -90,7 +90,7 @@ public class GravityCommand : CommandBase
                 BroadcastNotification(adminName, "gravity_notification", targetLabel, scale.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture));
 
                 _ = AdminLogManager.AddLogAsync("gravity", adminName, ctx.Sender?.SteamID ?? 0, null, null, $"targets={applied};scale={scale.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)}");
-                Core.Logger.LogInformationIfEnabled("[CS2_Admin] {Admin} set gravity of {Count} player(s) to {Scale}", adminName, applied, scale);
+                Core.Logger.LogInformationIfEnabled("{Admin} set gravity of {Count} player(s) to {Scale}", adminName, applied, scale);
             });
     }
 
@@ -115,7 +115,7 @@ public class GravityCommand : CommandBase
             }
             catch
             {
-                try { player.PlayerPawn.GravityScale = scale; } catch (Exception ex) { Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] GravityScale enforcer fallback failed for {SteamId}", player.SteamID); }
+                try { player.PlayerPawn.GravityScale = scale; } catch (Exception ex) { Core.Logger.LogErrorIfEnabled(ex, "GravityScale enforcer fallback failed for {SteamId}", player.SteamID); }
             }
             Core.Scheduler.DelayBySeconds(0.1f, Enforce);
         }

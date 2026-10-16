@@ -1,22 +1,24 @@
 <div align="center">
 
-# [SwiftlyS2] CS2_Admin
+# [SwiftlyS2] CS2 Admin (Upgraded)
 
 <br/>
 </div>
 
 ## Overview
 
-**CS2_Admin** is the ultimate, all-in-one administration plugin for Counter-Strike 2 servers running on SwiftlyS2. While standard admin plugins offer basic ban and mute functionality, **CS2_Admin** goes significantly further by integrating **Live Discord Server Statuses**, **Interactive Fun Commands**, **Comprehensive Reporting**, and a fully automated **GitHub Auto-Updater**.
+**CS2_Admin (Upgraded)** is an all-in-one administration plugin for Counter-Strike 2 servers running on SwiftlyS2. While standard admin plugins offer basic ban and mute functionality, **CS2_Admin** goes significantly further by integrating **Live Discord Server Statuses**, **Interactive Fun Commands**, **Comprehensive Reporting**, and a fully automated **GitHub Auto-Updater**.
 
-This plugin provides a highly robust, database-driven foundation for managing admins, permissions, player sanctions, and server features. Designed to be feature-rich yet highly customizable, it completely overhauls the standard admin experience.
+This plugin provides a database-driven foundation for managing admins, permissions, player sanctions, and server features. Designed to be feature-rich yet highly customizable, it completely overhauls the standard admin experience.
+
+**Original plugin:** [candaysa/CS2_Admin](https://github.com/candaysa/CS2_Admin)  
 
 ## Download Shortcuts
 <ul>
   <li>
     <code>📦</code>
     <strong>&nbsp;Download Latest Plugin Version</strong> ⇢
-    <a href="https://github.com/candaysa/CS2_Admin/releases/latest" target="_blank" rel="noopener noreferrer">Click Here</a>
+    <a href="https://github.com/agasking1337/CS2_Admin/releases/latest" target="_blank" rel="noopener noreferrer">Click Here</a>
   </li>
   <li>
     <code>⚙️</code>
@@ -69,6 +71,9 @@ The most complete sanction system available for SwiftlyS2:
 - **Kick**: Instantly remove a player with an optional reason.
 - **Predefined Reasons & Durations**: The in-game sanction menu presents a list of preconfigured reasons (e.g., "Hacking", "Insult players") and durations (5 min, 1 hour, permanent, etc.) so admins don't have to type anything manually.
 
+### 👻 Admin Visibility (`!hide`)
+Admins with `admin.generic` permission can use `!hide` to temporarily hide themselves from the normal team/player list by moving into a hidden team state. Running `!hide` again restores the admin to their previous team. This is a toggle command and can only be executed in-game.
+
 ### 🎮 30+ Fun & Utility Commands
 Transform your server into a playground with a massive library of player manipulation commands. Freeze, burn, bury, unbury, blind, beacon, resize, glow, disarm, adjust gravity, change speed, set health, give money, give weapons, teleport (`!goto` / `!bring`), toggle noclip, toggle godmode, and much more. Each command supports targeting individual players, groups, or the entire server.
 
@@ -84,7 +89,7 @@ CS2_Admin's Discord integration is far beyond a simple webhook logger:
 - **Custom Banners**: Add your own server banner image to the status embed for a professional look.
 
 ### 🔁 Auto-Updater
-When a new version is released on GitHub, the plugin automatically detects it on the next server start, downloads the update, replaces the old files, and reloads itself. Zero manual intervention required. You'll never run an outdated version again.
+The auto-updater is **disabled by default** (`AutoUpdate: false`). When explicitly enabled, it checks releases from the maintained fork, [agasking1337/CS2_Admin](https://github.com/agasking1337/CS2_Admin), and can install new releases. Existing JSON/JSONC configuration files are protected from being overwritten.
 
 ### 🌍 Multi-Language Support
 All player-facing messages (chat notifications, center HTML alerts, menu labels) are fully translatable. The plugin ships with **Turkish (TR)**, **English (EN)**, and **Hungarian (HU)** translations out of the box. Adding a new language is as simple as creating a new `.jsonc` file in the `resources/language/` directory.
@@ -141,7 +146,7 @@ The playtime tracker records admin activity at configurable intervals (default: 
 
 ## Installation
 
-1. Download the latest `CS2_Admin.zip` from the [Releases](https://github.com/candaysa/CS2_Admin/releases/latest) page.
+1. Download the latest `CS2_Admin.zip` from the [Releases](https://github.com/agasking1337/CS2_Admin/releases/latest) page.
 2. Extract the contents directly into your server's `addons/swiftlys2/plugins/` directory.
 3. Ensure your Swiftly `database.json` has a connection named `mysql_detailed`.
 4. Restart the server or load the plugin via the Swiftly console command:
@@ -235,6 +240,7 @@ CS2_Admin natively ties into Swiftly's permission system. Below are all the comm
 | Command | Default Permission | Description |
 |---------|--------------------|-------------|
 | `!admin` | `admin.generic` | Opens the main interactive admin menu |
+| `!hide` | `admin.generic` | Toggles admin visibility; hides you from the regular team/player list and restores your previous team when used again |
 | `!asay <message>` | `admin.generic` | Sends a message only to other admins |
 | `!csay <message>` | `admin.generic` | Sends a centered message to all players |
 | `!hsay <message>` | `admin.generic` | Sends a HUD message to all players |

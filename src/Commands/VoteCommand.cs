@@ -115,7 +115,7 @@ public class VoteCommand : CommandBase
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] Vote command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "Vote command failed");
         }
     }
 

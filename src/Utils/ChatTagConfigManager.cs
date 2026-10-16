@@ -44,7 +44,7 @@ public class ChatTagConfigManager
         if (_tagDbManager == null)
             return;
 
-        await _tagDbManager.SyncWithGroupsAsync(groupManager);
+        // Tags are explicitly configured in tags.json; do not generate tags from admin groups.
     }
 
     public ChatTagGroupStyle GetStyleForGroup(string? groupName)
@@ -53,45 +53,12 @@ public class ChatTagConfigManager
             return CreateDefaultStyle();
 
         var key = groupName.Trim();
+        var configuredStyle = Config.Groups.FirstOrDefault(pair =>
+            string.Equals(pair.Key, key, StringComparison.OrdinalIgnoreCase)).Value;
+        if (configuredStyle == null)
+            return CreateDefaultStyle();
+        return new ChatTagGroupStyle { ChatColor = NormalizeColor(configuredStyle.ChatColor, "[white]"), TagColor = NormalizeColor(configuredStyle.TagColor, "[default]"), NameColor = NormalizeColor(configuredStyle.NameColor, "[default]"), TagText = string.IsNullOrWhiteSpace(configuredStyle.TagText) ? key : configuredStyle.TagText };
 
-        if (_tagDbManager != null)
-        {
-            var tag = _tagDbManager.GetTagFromCache(key);
-            if (tag != null)
-            {
-                return new ChatTagGroupStyle
-                {
-                    ChatColor = NormalizeColor(tag.ChatColor, "[white]"),
-                    TagColor = NormalizeColor(tag.TagColor, "[default]"),
-                    NameColor = NormalizeColor(tag.NameColor, "[default]"),
-                    TagText = tag.TagText
-                };
-            }
-        }
-
-        return GetPresetStyle(key);
-    }
-
-    private static ChatTagGroupStyle GetPresetStyle(string groupName)
-    {
-        return groupName.ToLowerInvariant() switch
-        {
-            "owner" or "headadmin" or "founder"
-                => new ChatTagGroupStyle { ChatColor = "[white]", TagColor = "[red]", NameColor = "[gold]", TagText = groupName },
-            "admin" or "administrator"
-                => new ChatTagGroupStyle { ChatColor = "[white]", TagColor = "[darkred]", NameColor = "[red]", TagText = groupName },
-            "senioradmin" or "sradmin" or "srmod"
-                => new ChatTagGroupStyle { ChatColor = "[white]", TagColor = "[purple]", NameColor = "[lightpurple]", TagText = groupName },
-            "moderator" or "mod"
-                => new ChatTagGroupStyle { ChatColor = "[white]", TagColor = "[blue]", NameColor = "[lightblue]", TagText = groupName },
-            "helper" or "support"
-                => new ChatTagGroupStyle { ChatColor = "[white]", TagColor = "[green]", NameColor = "[lime]", TagText = groupName },
-            "vip" or "vip+"
-                => new ChatTagGroupStyle { ChatColor = "[white]", TagColor = "[gold]", NameColor = "[yellow]", TagText = groupName },
-            "tester"
-                => new ChatTagGroupStyle { ChatColor = "[white]", TagColor = "[olive]", NameColor = "[lightyellow]", TagText = groupName },
-            _ => CreateDefaultStyle()
-        };
     }
 
     private static ChatTagGroupStyle CreateDefaultStyle()

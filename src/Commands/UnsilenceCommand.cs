@@ -131,14 +131,14 @@ public sealed class UnsilenceCommand : CommandBase
                     }
                 });
 
-                Core.Logger.LogInformationIfEnabled("[CS2_Admin] {Admin} unsilenced {Target}. Reason: {Reason}",
+                Core.Logger.LogInformationIfEnabled("{Admin} unsilenced {Target}. Reason: {Reason}",
                     adminName, target.Name, reason);
                 await AdminLogManager.AddLogAsync("unsilence", adminName, adminSteamId, target.SteamId, target.IpAddress, $"reason={reason}", target.Name);
             }
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] Unsilence command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "Unsilence command failed");
         }
     }
 

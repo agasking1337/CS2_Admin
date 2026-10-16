@@ -123,12 +123,12 @@ public class WarnCommand : CommandBase
 
             await AdminLogManager.AddLogAsync("warn", adminName, adminSteamId, targetSteamId, targetIp, $"duration={duration};reason={reason}", targetName, targetPlayerId, reason);
 
-            Core.Logger.LogInformationIfEnabled("[CS2_Admin] {Admin} warned {Target} for {Duration} minutes. Reason: {Reason}",
+            Core.Logger.LogInformationIfEnabled("{Admin} warned {Target} for {Duration} minutes. Reason: {Reason}",
                 adminName, targetName, duration, reason);
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] Warn command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "Warn command failed");
         }
     }
 

@@ -33,11 +33,11 @@ public class DiscordServerStatusDbManager
         {
             using var connection = _core.Database.GetConnection("mysql_detailed");
             MigrationRunner.RunMigrations(connection);
-            _core.Logger.LogInformationIfEnabled("[CS2_Admin] Discord server status database initialized successfully");
+            _core.Logger.LogInformationIfEnabled("Discord server status database initialized successfully");
         }
         catch (Exception ex)
         {
-            _core.Logger.LogWarningIfEnabled("[CS2_Admin] Discord server status initialization warning: {Message}", ex.Message);
+            _core.Logger.LogWarningIfEnabled("Discord server status initialization warning: {Message}", ex.Message);
         }
     }
 
@@ -84,7 +84,7 @@ public class DiscordServerStatusDbManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error upserting discord server status: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error upserting discord server status: {Message}", ex.Message);
         }
     }
 
@@ -102,7 +102,7 @@ public class DiscordServerStatusDbManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error reading discord server statuses: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error reading discord server statuses: {Message}", ex.Message);
             return [];
         }
     }

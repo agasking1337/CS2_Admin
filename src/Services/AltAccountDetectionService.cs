@@ -73,7 +73,7 @@ public sealed class AltAccountDetectionService
         }
         catch (Exception ex)
         {
-            _core.Logger.LogWarningIfEnabled("[CS2_Admin] Alt account check failed for {SteamId}: {Message}", steamId, ex.Message);
+            _core.Logger.LogWarningIfEnabled("Alt account check failed for {SteamId}: {Message}", steamId, ex.Message);
             return null;
         }
     }

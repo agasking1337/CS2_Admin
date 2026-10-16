@@ -75,7 +75,7 @@ public static class ConfigMigrator
                 }
 
                 File.WriteAllText(filePath, outJson);
-                core.Logger.LogInformationIfEnabled("[CS2Admin] Migrated {File} to version {Version}.", fileName, expectedVersion);
+                core.Logger.LogInformationIfEnabled("Migrated {File} to version {Version}.", fileName, expectedVersion);
             }
         }
         catch (Exception ex)

@@ -36,11 +36,11 @@ public class GagManager
             using var connection = _core.Database.GetConnection("mysql_detailed");
             MigrationRunner.RunMigrations(connection);
 
-            _core.Logger.LogInformationIfEnabled("[CS2_Admin] Gag database initialized successfully");
+            _core.Logger.LogInformationIfEnabled("Gag database initialized successfully");
         }
         catch (Exception ex)
         {
-            _core.Logger.LogWarningIfEnabled("[CS2_Admin] Gag database initialization warning: {Message}", ex.Message);
+            _core.Logger.LogWarningIfEnabled("Gag database initialization warning: {Message}", ex.Message);
         }
     }
 
@@ -80,7 +80,7 @@ public class GagManager
             }
             catch (Exception ex)
             {
-                _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error adding gag: {Message}", ex.Message);
+                _core.Logger.LogErrorIfEnabled("Error adding gag: {Message}", ex.Message);
                 return false;
             }
         });
@@ -129,7 +129,7 @@ public class GagManager
             }
             catch (Exception ex)
             {
-                _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error ungagging player: {Message}", ex.Message);
+                _core.Logger.LogErrorIfEnabled("Error ungagging player: {Message}", ex.Message);
                 return false;
             }
         });
@@ -194,7 +194,7 @@ public class GagManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error checking gag: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error checking gag: {Message}", ex.Message);
             return null;
         }
     }
@@ -239,7 +239,7 @@ public class GagManager
         }
         catch (Exception ex)
         {
-            _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error checking fresh gag: {Message}", ex.Message);
+            _core.Logger.LogErrorIfEnabled("Error checking fresh gag: {Message}", ex.Message);
             return null;
         }
     }
@@ -277,7 +277,7 @@ public class GagManager
             }
             catch (Exception ex)
             {
-                _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error getting total gags: {Message}", ex.Message);
+                _core.Logger.LogErrorIfEnabled("Error getting total gags: {Message}", ex.Message);
                 return 0;
             }
         });
@@ -302,13 +302,13 @@ public class GagManager
 
                 if (cleaned > 0)
                 {
-                    _core.Logger.LogInformationIfEnabled("[CS2_Admin] Marked {Count} gags as expired", cleaned);
+                    _core.Logger.LogInformationIfEnabled("Marked {Count} gags as expired", cleaned);
                     _gagCache.Clear();
                 }
             }
             catch (Exception ex)
             {
-                _core.Logger.LogErrorIfEnabled("[CS2_Admin] Error cleaning expired gags: {Message}", ex.Message);
+                _core.Logger.LogErrorIfEnabled("Error cleaning expired gags: {Message}", ex.Message);
             }
         });
     }

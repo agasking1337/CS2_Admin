@@ -60,11 +60,11 @@ public class PsayCommand : CommandBase
             ReplyRaw(context, $"Message sent to {target.Controller.PlayerName}.");
 
             _ = AdminLogManager.AddLogAsync("psay", adminName, context.Sender?.SteamID ?? 0, target.SteamID, target.IPAddress, $"message={messageText}", target.Controller.PlayerName);
-            Core.Logger.LogInformationIfEnabled("[CS2_Admin] PSAY from {Admin} to {Target}: {Message}", adminName, target.Controller.PlayerName, messageText);
+            Core.Logger.LogInformationIfEnabled("PSAY from {Admin} to {Target}: {Message}", adminName, target.Controller.PlayerName, messageText);
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] Psay command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "Psay command failed");
         }
     }
 }

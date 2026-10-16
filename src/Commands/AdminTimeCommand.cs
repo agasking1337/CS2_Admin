@@ -79,7 +79,7 @@ public class AdminTimeCommand : CommandBase
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] AdminTime command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "AdminTime command failed");
         }
     }
 

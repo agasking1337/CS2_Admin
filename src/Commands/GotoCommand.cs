@@ -121,7 +121,7 @@ public class GotoCommand : CommandBase
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] Goto command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "Goto command failed");
         }
     }
 }

@@ -60,7 +60,7 @@ public class HideCommand : CommandBase
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] Hide command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "Hide command failed");
         }
     }
 }

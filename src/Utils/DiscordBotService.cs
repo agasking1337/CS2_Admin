@@ -179,14 +179,14 @@ public class DiscordBotService
     {
         if (!HasBotConfiguration())
         {
-            _core.Logger.LogInformationIfEnabled("[CS2_Admin][Debug][Discord] gateway skipped reason=no_bot_token");
+            _core.Logger.LogInformationIfEnabled("[Debug][Discord] gateway skipped reason=no_bot_token");
             return;
         }
 
         if (_gatewayClient == null)
             return;
 
-        _core.Logger.LogInformationIfEnabled("[CS2_Admin][Debug][Discord] gateway starting");
+        _core.Logger.LogInformationIfEnabled("[Debug][Discord] gateway starting");
         _gatewayClient.Start();
     }
 
@@ -302,6 +302,6 @@ public class DiscordBotService
         }
 
         _configurationWarningTimestamps[key] = now;
-        _core.Logger.LogWarningIfEnabled("[CS2_Admin] Discord bot cannot {Action}: {Reason}.", action, reason);
+        _core.Logger.LogWarningIfEnabled("Discord bot cannot {Action}: {Reason}.", action, reason);
     }
 }

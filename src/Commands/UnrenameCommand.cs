@@ -90,12 +90,12 @@ public class UnrenameCommand : CommandBase
                     $" \x02{L("prefix")}\x01 {L("unrename_personal_chat", originalName, ResolveVisibleAdminName(liveTarget, adminName))}");
 
                 _ = AdminLogManager.AddLogAsync("unrename", adminName, context.Sender?.SteamID ?? 0, liveTarget.SteamID, liveTarget.IPAddress, $"restored_name={originalName}", targetName);
-                Core.Logger.LogInformationIfEnabled("[CS2_Admin] {Admin} restored name of {Target} to {OriginalName}", adminName, targetName, originalName);
+                Core.Logger.LogInformationIfEnabled("{Admin} restored name of {Target} to {OriginalName}", adminName, targetName, originalName);
             });
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] Unrename command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "Unrename command failed");
         }
     }
 }

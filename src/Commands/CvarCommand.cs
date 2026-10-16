@@ -68,12 +68,12 @@ public class CvarCommand : CommandBase
                 }
 
                 _ = AdminLogManager.AddLogAsync("cvar", adminName, context.Sender?.SteamID ?? 0, null, null, $"cvar={cvarName};value={value}");
-                Core.Logger.LogInformation("[CS2_Admin] {Admin} set {Cvar} to {Value}", adminName, cvarName, value);
+                Core.Logger.LogInformation("{Admin} set {Cvar} to {Value}", adminName, cvarName, value);
             }
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] Cvar command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "Cvar command failed");
         }
     }
 }

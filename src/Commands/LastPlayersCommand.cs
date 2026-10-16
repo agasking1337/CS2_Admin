@@ -65,7 +65,7 @@ public class LastPlayersCommand : CommandBase
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] Last players command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "Last players command failed");
         }
     }
 

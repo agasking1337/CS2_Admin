@@ -86,5 +86,6 @@ public enum BanStatus
 public enum BanTargetType
 {
     SteamId,
-    Ip
+    Ip,
+    Both
 }

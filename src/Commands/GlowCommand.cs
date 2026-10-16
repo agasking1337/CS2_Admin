@@ -126,7 +126,7 @@ public class GlowCommand : CommandBase
                     : $"targets={targets.Count};rgba={r},{g},{b},{a}";
 
                 _ = AdminLogManager.AddLogAsync("glow", adminName, ctx.Sender?.SteamID ?? 0, null, null, details);
-                Core.Logger.LogInformation("[CS2_Admin] {Admin} set glow for {Count} player(s)", adminName, targets.Count);
+                Core.Logger.LogInformation("{Admin} set glow for {Count} player(s)", adminName, targets.Count);
             });
     }
 

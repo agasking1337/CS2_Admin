@@ -35,7 +35,7 @@ public partial class CS2_Admin
                 .ToList();
 
             if (blocked.Count > 0)
-                Core.Logger.LogWarningIfEnabled("[CS2Admin] Removed blocked command alias(es) [{Blocked}] from {Property}.", string.Join(", ", blocked), prop.Name);
+                Core.Logger.LogWarningIfEnabled("Removed blocked command alias(es) [{Blocked}] from {Property}.", string.Join(", ", blocked), prop.Name);
 
             var cleaned = aliases
                 .Where(x => !string.IsNullOrWhiteSpace(x))
@@ -175,7 +175,7 @@ public partial class CS2_Admin
         }
         catch (Exception ex)
         {
-            Core.Logger.LogWarningIfEnabled("[CS2_Admin] Failed to register command '{Name}': {Msg}", name, ex.Message);
+            Core.Logger.LogWarningIfEnabled("Failed to register command '{Name}': {Msg}", name, ex.Message);
         }
     }
 
@@ -204,7 +204,7 @@ public partial class CS2_Admin
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] Failed to ensure commands");
+            Core.Logger.LogErrorIfEnabled(ex, "Failed to ensure commands");
         }
     }
 }

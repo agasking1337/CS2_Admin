@@ -86,7 +86,7 @@ public class MoneyCommand : CommandBase
                         }
                         catch (Exception ex)
                         {
-                            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] Money set reflection fallback failed for {SteamId}", liveTarget.SteamID);
+                            Core.Logger.LogErrorIfEnabled(ex, "Money set reflection fallback failed for {SteamId}", liveTarget.SteamID);
                         }
                     }
 
@@ -100,12 +100,12 @@ public class MoneyCommand : CommandBase
                         $" \x02{L("prefix")}\x01 {L("money_personal_chat", amount)}");
 
                     _ = AdminLogManager.AddLogAsync("money", adminName, context.Sender?.SteamID ?? 0, liveTarget.SteamID, liveTarget.IPAddress, $"amount={amount}", targetName);
-                    Core.Logger.LogInformation("[CS2_Admin] {Admin} set money of {Target} to {Amount}", adminName, targetName, amount);
+                    Core.Logger.LogInformation("{Admin} set money of {Target} to {Amount}", adminName, targetName, amount);
                 });
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] Money command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "Money command failed");
         }
     }
 }

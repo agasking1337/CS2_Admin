@@ -58,7 +58,7 @@ public class BuryCommand : CommandBase
                 BroadcastNotification(adminName, "bury_notification", FormatTargetName(targets));
 
                 _ = AdminLogManager.AddLogAsync("bury", adminName, ctx.Sender?.SteamID ?? 0, null, null, $"targets={targets.Count}");
-                Core.Logger.LogInformationIfEnabled("[CS2_Admin] {Admin} buried {Count} player(s)", adminName, targets.Count);
+                Core.Logger.LogInformationIfEnabled("{Admin} buried {Count} player(s)", adminName, targets.Count);
             });
     }
 }

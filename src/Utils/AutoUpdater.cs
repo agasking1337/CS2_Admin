@@ -14,7 +14,7 @@ namespace CS2_Admin.Utils;
 
 public static class AutoUpdater
 {
-    private const string RepoOwner = "candaysa";
+    private const string RepoOwner = "agasking1337";
     private const string RepoName = "CS2_Admin";
 
     // Kullanıcı tarafından düzenlenmiş dosyalar — asla üzerine yazılmaz.
@@ -28,7 +28,9 @@ public static class AutoUpdater
         "maps.json",
         "discord.json",
         "afk.json",
-        "chat_tags.json"
+        "chat_tags.json",
+        "tags.json",
+        "commandblocker.json"
     };
 
     private static readonly HashSet<string> SkippedDirectories = new(StringComparer.OrdinalIgnoreCase)
@@ -51,14 +53,14 @@ public static class AutoUpdater
     {
         try
         {
-            core.Logger.LogInformationIfEnabled("[CS2Admin] Checking for updates on GitHub...");
+            core.Logger.LogInformationIfEnabled("Checking for updates on GitHub...");
 
             var url = $"https://api.github.com/repos/{RepoOwner}/{RepoName}/releases/latest";
             using var response = await HttpClient.GetAsync(url);
 
             if (!response.IsSuccessStatusCode)
             {
-                core.Logger.LogWarningIfEnabled("[CS2Admin] Failed to check for updates. GitHub API responded with: {Status}", response.StatusCode);
+                core.Logger.LogWarningIfEnabled("Failed to check for updates. GitHub API responded with: {Status}", response.StatusCode);
                 return;
             }
 
@@ -67,7 +69,7 @@ public static class AutoUpdater
 
             if (release == null || string.IsNullOrEmpty(release.TagName))
             {
-                core.Logger.LogWarningIfEnabled("[CS2Admin] Failed to parse GitHub release data (tag_name missing).");
+                core.Logger.LogWarningIfEnabled("Failed to parse GitHub release data (tag_name missing).");
                 return;
             }
 
@@ -77,16 +79,16 @@ public static class AutoUpdater
             var cmp = CompareVersions(latestVer, currVer);
             if (cmp <= 0)
             {
-                core.Logger.LogInformationIfEnabled("[CS2Admin] You are running the latest version: {Version}", currVer);
+                core.Logger.LogInformationIfEnabled("You are running the latest version: {Version}", currVer);
                 return;
             }
 
-            core.Logger.LogInformationIfEnabled("[CS2Admin] New version available! {OldVersion} -> {NewVersion}. Downloading...", currVer, latestVer);
+            core.Logger.LogInformationIfEnabled("New version available! {OldVersion} -> {NewVersion}. Downloading...", currVer, latestVer);
 
             var asset = release.Assets?.FirstOrDefault(a => a.BrowserDownloadUrl.EndsWith(".zip", StringComparison.OrdinalIgnoreCase));
             if (asset == null || string.IsNullOrEmpty(asset.BrowserDownloadUrl))
             {
-                core.Logger.LogWarningIfEnabled("[CS2Admin] Could not find a .zip asset in the latest release.");
+                core.Logger.LogWarningIfEnabled("Could not find a .zip asset in the latest release.");
                 return;
             }
 
@@ -94,7 +96,7 @@ public static class AutoUpdater
         }
         catch (Exception ex)
         {
-            core.Logger.LogErrorIfEnabled(ex, "[CS2Admin] Auto-Updater encountered an error");
+            core.Logger.LogErrorIfEnabled(ex, "Auto-Updater encountered an error");
         }
     }
 
@@ -112,7 +114,7 @@ public static class AutoUpdater
             {
                 if (!zipResponse.IsSuccessStatusCode)
                 {
-                    core.Logger.LogWarningIfEnabled("[CS2Admin] Failed to download update. HTTP status: {Status}", zipResponse.StatusCode);
+                    core.Logger.LogWarningIfEnabled("Failed to download update. HTTP status: {Status}", zipResponse.StatusCode);
                     return;
                 }
 
@@ -132,7 +134,7 @@ public static class AutoUpdater
             var dllPath = Directory.GetFiles(tempExtractPath, "CS2_Admin.dll", SearchOption.AllDirectories).FirstOrDefault();
             if (dllPath == null)
             {
-                core.Logger.LogWarningIfEnabled("[CS2Admin] Downloaded update is invalid (CS2_Admin.dll not found in archive).");
+                core.Logger.LogWarningIfEnabled("Downloaded update is invalid (CS2_Admin.dll not found in archive).");
                 return;
             }
 
@@ -142,11 +144,11 @@ public static class AutoUpdater
             // 4) Dosyaları plugin dizinine kopyala (kullanıcı dosyaları korunur)
             CopyDirectorySafe(sourcePluginDir, pluginPath);
 
-            core.Logger.LogInformationIfEnabled("[CS2Admin] Update applied successfully! Swiftly will reload the plugin automatically.");
+            core.Logger.LogInformationIfEnabled("Update applied successfully! Swiftly will reload the plugin automatically.");
         }
         catch (Exception ex)
         {
-            core.Logger.LogErrorIfEnabled("[CS2Admin] Failed to apply update: {Message}", ex.Message);
+            core.Logger.LogErrorIfEnabled("Failed to apply update: {Message}", ex.Message);
         }
         finally
         {
@@ -169,7 +171,10 @@ public static class AutoUpdater
         foreach (var file in Directory.GetFiles(sourceDir))
         {
             var fileName = Path.GetFileName(file);
-            if (ProtectedFiles.Contains(fileName))
+            if (ProtectedFiles.Contains(fileName) ||
+                ((fileName.EndsWith(".json", StringComparison.OrdinalIgnoreCase) ||
+                  fileName.EndsWith(".jsonc", StringComparison.OrdinalIgnoreCase)) &&
+                 File.Exists(Path.Combine(targetDir, fileName))))
             {
                 // Kullanıcı dosyası — atla. EnsureConfig zaten migrate eder.
                 continue;

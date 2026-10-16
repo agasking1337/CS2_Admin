@@ -48,13 +48,13 @@ public class AdminReloadCommand : CommandBase
             }
             catch (Exception ex)
             {
-                Core.Logger.LogErrorIfEnabled("[CS2_Admin] adminreload failed: {Message}", ex.Message);
+                Core.Logger.LogErrorIfEnabled("adminreload failed: {Message}", ex.Message);
                 await OnMainThreadAsync(() => Reply(context, "adminreload_failed"));
             }
         }
         catch (Exception ex)
         {
-            Core.Logger.LogErrorIfEnabled(ex, "[CS2_Admin] AdminReload command failed");
+            Core.Logger.LogErrorIfEnabled(ex, "AdminReload command failed");
         }
     }
 }
