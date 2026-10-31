@@ -81,7 +81,7 @@ public partial class CS2_Admin
         RegisterCmdList(["kick"], _kickCmd.Execute);
         RegisterCmdList(["slap"], _slapCmd.Execute);
         RegisterCmdList(["slay"], _slayCmd.Execute);
-        RegisterCmdList(["god"], _godCmd.Execute);
+        RegisterCmdList(["godmode"], _godCmd.Execute);
         RegisterCmdList(["respawn", "revive"], _respawnCmd.Execute);
         RegisterCmdList(["team", "swap"], _teamCmd.Execute);
         RegisterCmdList(["mixteam"], _mixTeamCmd.Execute);
