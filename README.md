@@ -286,7 +286,7 @@ CS2_Admin natively ties into Swiftly's permission system. Below are all the comm
 | Command | Default Permission | Description |
 |---------|--------------------|-------------|
 | `!noclip <target>` | `admin.cheats` | Toggles noclip for a player |
-| `!god <target>` | `admin.cheats` | Toggles godmode for a player |
+| `!godmode <target>` | `admin.cheats` | Toggles godmode for a player |
 | `!slap <target> [damage]` | `admin.cheats` | Slaps a player, dealing optional damage |
 | `!slay <target>` | `admin.cheats` | Instantly kills a player |
 | `!respawn <target>` | `admin.cheats` | Respawns a dead player |
