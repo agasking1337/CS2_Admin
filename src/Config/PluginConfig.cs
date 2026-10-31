@@ -266,12 +266,15 @@ public class CommandsConfig
     public List<string> ChangeMap { get; set; } = ["map"];
     public List<string> ChangeWSMap { get; set; } = ["wsmap"];
     public List<string> RestartGame { get; set; } = ["rr", "restart"];
+    [JsonIgnore]
     public List<string> HeadshotMode { get; set; } = ["hson", "hsoff"];
     public List<string> HeadshotOn { get; set; } = ["hson"];
     public List<string> HeadshotOff { get; set; } = ["hsoff"];
+    [JsonIgnore]
     public List<string> BunnyHop { get; set; } = ["bhopon", "bunnyon", "bhopoff", "bunnyoff"];
     public List<string> BunnyOn { get; set; } = ["bhopon", "bunnyon"];
     public List<string> BunnyOff { get; set; } = ["bhopoff", "bunnyoff"];
+    [JsonIgnore]
     public List<string> RespawnMode { get; set; } = ["respawnon", "respawnoff"];
     public List<string> RespawnOn { get; set; } = ["respawnon"];
     public List<string> RespawnOff { get; set; } = ["respawnoff"];
@@ -281,7 +284,6 @@ public class CommandsConfig
     public List<string> Who { get; set; } = ["who"];
     public List<string> Hide { get; set; } = ["hide"];
 }
-
 public class PermissionsConfig
 {
     public const int CurrentVersion = 11;
@@ -446,6 +448,8 @@ public class SanctionMenuConfig
         new() { Name = "Permanent", Minutes = -1 }
     };
 }
+
+
 
 public class CommandBlockerFileConfig
 {
