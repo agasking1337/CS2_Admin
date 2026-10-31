@@ -196,19 +196,12 @@ public class CommandsConfig
 {
     public const int CurrentVersion = 11;
     public int Version { get; set; } = CurrentVersion;
-    [JsonIgnore]
     public List<string> AdminMenu { get; set; } = ["admin"];
-    [JsonIgnore]
     public List<string> AdminRoot { get; set; } = ["admin"];
-    [JsonIgnore]
     public List<string> Asay { get; set; } = ["asay"];
-    [JsonIgnore]
     public List<string> Say { get; set; } = ["say"];
-    [JsonIgnore]
     public List<string> Psay { get; set; } = ["psay"];
-    [JsonIgnore]
     public List<string> Csay { get; set; } = ["csay"];
-    [JsonIgnore]
     public List<string> Hsay { get; set; } = ["hsay"];
     public List<string> CallAdmin { get; set; } = ["calladmin"];
     public List<string> Report { get; set; } = ["report"];
@@ -217,23 +210,14 @@ public class CommandsConfig
     public List<string> AdminTime { get; set; } = ["admintime"];
     public List<string> AdminTimeSend { get; set; } = ["admintimesend"];
     public List<string> Afk { get; set; } = ["afk"];
-    [JsonIgnore]
     public List<string> AdminReload { get; set; } = ["adminreload"];
-    [JsonIgnore]
     public List<string> AddAdmin { get; set; } = ["addadmin"];
-    [JsonIgnore]
     public List<string> EditAdmin { get; set; } = ["editadmin"];
-    [JsonIgnore]
     public List<string> RemoveAdmin { get; set; } = ["removeadmin"];
-    [JsonIgnore]
     public List<string> ListAdmins { get; set; } = ["listadmins", "admins"];
-    [JsonIgnore]
     public List<string> AddGroup { get; set; } = ["addgroup"];
-    [JsonIgnore]
     public List<string> EditGroup { get; set; } = ["editgroup"];
-    [JsonIgnore]
     public List<string> RemoveGroup { get; set; } = ["removegroup"];
-    [JsonIgnore]
     public List<string> ListGroups { get; set; } = ["listgroups"];
     public List<string> Ban { get; set; } = ["ban"];
     public List<string> IpBan { get; set; } = ["ipban"];
@@ -244,98 +228,54 @@ public class CommandsConfig
     public List<string> AddBan { get; set; } = ["addban"];
     public List<string> Unban { get; set; } = ["unban"];
     public List<string> Kick { get; set; } = ["kick"];
-    [JsonIgnore]
     public List<string> Slap { get; set; } = ["slap"];
-    [JsonIgnore]
-    public List<string> God { get; set; } = ["god"];
-    [JsonIgnore]
+    public List<string> God { get; set; } = ["godmode"];
     public List<string> Gag { get; set; } = ["gag"];
-    [JsonIgnore]
     public List<string> Ungag { get; set; } = ["ungag"];
-    [JsonIgnore]
     public List<string> Mute { get; set; } = ["mute"];
-    [JsonIgnore]
     public List<string> Unmute { get; set; } = ["unmute"];
-    [JsonIgnore]
     public List<string> Silence { get; set; } = ["silence"];
-    [JsonIgnore]
     public List<string> Unsilence { get; set; } = ["unsilence"];
-    [JsonIgnore]
     public List<string> Slay { get; set; } = ["slay"];
-    [JsonIgnore]
     public List<string> Respawn { get; set; } = ["respawn", "revive"];
-    [JsonIgnore]
     public List<string> ChangeTeam { get; set; } = ["team", "swap"];
-    [JsonIgnore]
     public List<string> MixTeam { get; set; } = ["mixteam"];
-    [JsonIgnore]
     public List<string> NoClip { get; set; } = ["noclip"];
     public List<string> Goto { get; set; } = ["goto"];
     public List<string> Bring { get; set; } = ["bring"];
-    [JsonIgnore]
     public List<string> Freeze { get; set; } = ["freeze"];
-    [JsonIgnore]
     public List<string> Unfreeze { get; set; } = ["unfreeze"];
-    [JsonIgnore]
     public List<string> Resize { get; set; } = ["resize"];
 
-    [JsonIgnore]
     public List<string> Blind { get; set; } = ["blind"];
-    [JsonIgnore]
     public List<string> Glow { get; set; } = ["glow", "glove"];
-    [JsonIgnore]
     public List<string> Rgb { get; set; } = ["rgb", "rainbow"];
-    [JsonIgnore]
     public List<string> Beacon { get; set; } = ["beacon"];
-    [JsonIgnore]
     public List<string> Bury { get; set; } = ["bury"];
-    [JsonIgnore]
     public List<string> Unbury { get; set; } = ["unbury"];
-    [JsonIgnore]
     public List<string> Burn { get; set; } = ["burn"];
-    [JsonIgnore]
     public List<string> Disarm { get; set; } = ["disarm"];
-    [JsonIgnore]
     public List<string> Speed { get; set; } = ["speed", "setspeed"];
-    [JsonIgnore]
     public List<string> Gravity { get; set; } = ["gravity", "setgravity"];
-    [JsonIgnore]
     public List<string> Rename { get; set; } = ["rename"];
-    [JsonIgnore]
     public List<string> Unrename { get; set; } = ["unrename"];
-    [JsonIgnore]
     public List<string> Hp { get; set; } = ["hp"];
-    [JsonIgnore]
     public List<string> Money { get; set; } = ["money", "setmoney", "givemoney"];
-    [JsonIgnore]
     public List<string> Give { get; set; } = ["give", "giveitem"];
-    [JsonIgnore]
     public List<string> Vote { get; set; } = ["vote"];
     public List<string> ChangeMap { get; set; } = ["map"];
     public List<string> ChangeWSMap { get; set; } = ["wsmap"];
-    [JsonIgnore]
     public List<string> RestartGame { get; set; } = ["rr", "restart"];
-    [JsonIgnore]
     public List<string> HeadshotMode { get; set; } = ["hson", "hsoff"];
-    [JsonIgnore]
     public List<string> HeadshotOn { get; set; } = ["hson"];
-    [JsonIgnore]
     public List<string> HeadshotOff { get; set; } = ["hsoff"];
-    [JsonIgnore]
     public List<string> BunnyHop { get; set; } = ["bhopon", "bunnyon", "bhopoff", "bunnyoff"];
-    [JsonIgnore]
     public List<string> BunnyOn { get; set; } = ["bhopon", "bunnyon"];
-    [JsonIgnore]
     public List<string> BunnyOff { get; set; } = ["bhopoff", "bunnyoff"];
-    [JsonIgnore]
     public List<string> RespawnMode { get; set; } = ["respawnon", "respawnoff"];
-    [JsonIgnore]
     public List<string> RespawnOn { get; set; } = ["respawnon"];
-    [JsonIgnore]
     public List<string> RespawnOff { get; set; } = ["respawnoff"];
-    [JsonIgnore]
     public List<string> Rcon { get; set; } = ["rcon"];
-    [JsonIgnore]
     public List<string> Cvar { get; set; } = ["cvar"];
     public List<string> ListPlayers { get; set; } = ["players"];
     public List<string> Who { get; set; } = ["who"];
@@ -506,8 +446,6 @@ public class SanctionMenuConfig
         new() { Name = "Permanent", Minutes = -1 }
     };
 }
-
-
 
 public class CommandBlockerFileConfig
 {
