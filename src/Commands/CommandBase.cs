@@ -107,18 +107,21 @@ public abstract class CommandBase : ICommand
 
     private string BuildUsage(ICommandContext context, string argsKey)
     {
-        var prefix = string.IsNullOrEmpty(context.Prefix) ? "!" : context.Prefix;
-        var cmd = string.IsNullOrWhiteSpace(context.CommandName) ? string.Empty : context.CommandName;
-        var label = L("usage_label");
+	var prefix = string.IsNullOrEmpty(context.Prefix) ? "!" : context.Prefix;
+	var cmd = string.IsNullOrWhiteSpace(context.CommandName) ? string.Empty : context.CommandName;
+	var label = L("usage_label");
 
-        var args = L(argsKey);
-        // Anahtar bulunamazsa localizer anahtarın kendisini döndürür; bu durumda argümansız say.
-        if (string.Equals(args, argsKey, StringComparison.Ordinal))
-            args = string.Empty;
+	var args = L(argsKey);
+	if (string.Equals(args, argsKey, StringComparison.Ordinal))
+    args = string.Empty;
 
-        return string.IsNullOrWhiteSpace(args)
-            ? $"{label}: {prefix}{cmd}"
-            : $"{label}: {prefix}{cmd} {args}";
+	var command = cmd.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+    ? cmd
+    : $"{prefix}{cmd}";
+
+	return string.IsNullOrWhiteSpace(args)
+    ? $"{label}: {command}"
+    : $"{label}: {command} {args}";
     }
 
     protected void Reply(ICommandContext context, string key, params object[] args)
