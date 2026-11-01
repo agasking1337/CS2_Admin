@@ -23,6 +23,9 @@ public sealed class CommandBlockerService
     private readonly ConcurrentDictionary<ulong, byte> _refreshing = new();
     private readonly ConcurrentDictionary<ulong, int> _versions = new();
     private readonly ConcurrentDictionary<ulong, DateTime> _lastNotice = new();
+    // If a command is blocked while WarmUp() is already refreshing this SteamID,
+    // remember the player so the in-flight refresh can still send the result.
+    private readonly ConcurrentDictionary<ulong, int> _pendingNoticePlayers = new();
     private Guid _chatHook;
     private Guid _consoleHook;
     private bool _active;
@@ -63,6 +66,7 @@ public sealed class CommandBlockerService
         _chatHook = Guid.Empty;
         _consoleHook = Guid.Empty;
         _cache.Clear();
+        _pendingNoticePlayers.Clear();
     }
 
     private HookResult OnChat(int playerId, string text, bool teamOnly)
@@ -104,9 +108,10 @@ public sealed class CommandBlockerService
             return true;
         }
 
-        // Never wait for SQL or Discord HTTP on the game thread.
-        if (_refreshing.TryAdd(steamId, 0))
-            _ = Task.Run(() => RefreshRoleAsync(steamId, playerId, _versions.GetOrAdd(steamId, 0)));
+        // The command is blocked while verification is unknown. Remember who tried it,
+        // including when WarmUp() already owns the refresh, so the eventual result is shown.
+        _pendingNoticePlayers[steamId] = playerId;
+        StartRefresh(steamId);
         return true;
     }
 
@@ -114,8 +119,14 @@ public sealed class CommandBlockerService
     {
         if (!_active || steamId == 0 || _cache.TryGetValue(steamId, out var cached) && cached.Expires > DateTime.UtcNow)
             return;
+        StartRefresh(steamId);
+    }
+
+    private void StartRefresh(ulong steamId)
+    {
+        if (!_active || steamId == 0) return;
         if (_refreshing.TryAdd(steamId, 0))
-            _ = Task.Run(() => RefreshRoleAsync(steamId, 0, _versions.GetOrAdd(steamId, 0)));
+            _ = Task.Run(() => RefreshRoleAsync(steamId, _versions.GetOrAdd(steamId, 0)));
     }
 
     public void OnLinkChanged(ulong steamId, bool linked)
@@ -123,24 +134,37 @@ public sealed class CommandBlockerService
         _versions.AddOrUpdate(steamId, 1, (_, value) => value + 1);
         if (linked) _cache.TryRemove(steamId, out _);
         else _cache[steamId] = (false, false, DateTime.UtcNow.AddSeconds(30));
+
+        // If a command was attempted during a refresh, use the new state (or refresh it)
+        // rather than leaving the pending notification stranded.
+        if (_pendingNoticePlayers.ContainsKey(steamId))
+        {
+            if (!linked)
+                CompletePendingNotice(steamId, "command_blocker_link_required");
+            else
+                StartRefresh(steamId);
+        }
     }
 
-    private async Task RefreshRoleAsync(ulong steamId, int playerId, int version)
+    private async Task RefreshRoleAsync(ulong steamId, int version)
     {
         try
         {
             var link = await _links.GetBySteamIdAsync(steamId);
+            if (_versions.GetOrAdd(steamId, 0) != version) return;
             if (link == null)
             {
-                if (_versions.GetOrAdd(steamId, 0) != version) return;
                 _cache[steamId] = (false, false, DateTime.UtcNow.AddSeconds(30));
-                Notify(playerId, steamId, "command_blocker_link_required");
+                CompletePendingNotice(steamId, "command_blocker_link_required");
                 return;
             }
+
             var url = $"https://discord.com/api/v10/guilds/{_discord.GuildId}/members/{link.DiscordId}";
             using var request = new HttpRequestMessage(HttpMethod.Get, url);
             request.Headers.Authorization = new AuthenticationHeaderValue("Bot", _discord.BotToken);
             using var response = await Http.SendAsync(request);
+            if (_versions.GetOrAdd(steamId, 0) != version) return;
+
             if (response.IsSuccessStatusCode)
             {
                 using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
@@ -148,20 +172,18 @@ public sealed class CommandBlockerService
                 var allowed = roles.EnumerateArray().Any(role => role.GetString() == _discord.VerifiedRoleId);
                 if (_versions.GetOrAdd(steamId, 0) != version) return;
                 _cache[steamId] = (true, allowed, DateTime.UtcNow.AddSeconds(allowed ? Math.Clamp(_config.RoleCacheSeconds, 10, 600) : 10));
-                if (!allowed) Notify(playerId, steamId, "command_blocker_role_required");
+                CompletePendingNotice(steamId, allowed ? null : "command_blocker_role_required");
             }
             else if (response.StatusCode == HttpStatusCode.NotFound)
             {
-                if (_versions.GetOrAdd(steamId, 0) != version) return;
                 _cache[steamId] = (true, false, DateTime.UtcNow.AddSeconds(10));
-                Notify(playerId, steamId, "command_blocker_role_required");
+                CompletePendingNotice(steamId, "command_blocker_role_required");
             }
             else
             {
                 _core.Logger.LogWarningIfEnabled("Could not check Discord verified role (HTTP {Status}).", (int)response.StatusCode);
-                if (_versions.GetOrAdd(steamId, 0) != version) return;
                 _cache[steamId] = (true, false, DateTime.UtcNow.AddSeconds(10));
-                Notify(playerId, steamId, "command_blocker_role_required");
+                CompletePendingNotice(steamId, "command_blocker_role_required");
             }
         }
         catch (Exception ex)
@@ -169,8 +191,31 @@ public sealed class CommandBlockerService
             _core.Logger.LogWarningIfEnabled("Could not check Discord verified role: {Message}", ex.Message);
             if (_versions.GetOrAdd(steamId, 0) != version) return;
             _cache[steamId] = (false, false, DateTime.UtcNow.AddSeconds(10));
+            // The status could not be determined; show the general link/verification prompt
+            // rather than silently blocking the command.
+            CompletePendingNotice(steamId, "command_blocker_link_required");
         }
-        finally { _refreshing.TryRemove(steamId, out _); }
+        finally
+        {
+            _refreshing.TryRemove(steamId, out _);
+
+            // If a link change invalidated this refresh while a command was waiting,
+            // immediately retry with the current version or resolve from the fresh cache.
+            if (_active && _pendingNoticePlayers.ContainsKey(steamId))
+            {
+                if (_cache.TryGetValue(steamId, out var state) && state.Expires > DateTime.UtcNow)
+                    CompletePendingNotice(steamId, state.Allowed ? null : state.Linked ? "command_blocker_role_required" : "command_blocker_link_required");
+                else
+                    StartRefresh(steamId);
+            }
+        }
+    }
+
+    private void CompletePendingNotice(ulong steamId, string? key)
+    {
+        if (!_pendingNoticePlayers.TryRemove(steamId, out var playerId)) return;
+        if (key != null)
+            Notify(playerId, steamId, key);
     }
 
     private void Notify(int playerId, ulong steamId, string key)
