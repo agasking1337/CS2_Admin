@@ -72,7 +72,7 @@ public class GodCommand : CommandBase
                 foreach (var target in targets)
                 {
                     var stateLabel = _godPlayers.Contains(target.PlayerID) ? L("god_enabled") : L("god_disabled");
-                    _ = AdminLogManager.AddLogAsync("god", adminName, ctx.Sender?.SteamID ?? 0, target.SteamID, target.IPAddress, $"enabled={stateLabel == L("god_enabled")}", target.Controller.PlayerName);
+                    _ = AdminLogManager.AddLogAsync("godmode", adminName, ctx.Sender?.SteamID ?? 0, target.SteamID, target.IPAddress, $"enabled={stateLabel == L("god_enabled")}", target.Controller.PlayerName);
                 }
             });
     }
