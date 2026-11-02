@@ -1,7 +1,7 @@
 using SwiftlyS2.Shared;
-using SwiftlyS2.Shared.Menus;
+using SwiftlyS2.Shared.Menu;
+using SwiftlyS2.Shared.Menu.Components;
 using SwiftlyS2.Shared.Players;
-using SwiftlyS2.Core.Menus.OptionsBase;
 using CS2_Admin.Config;
 using CS2_Admin.Database;
 using CS2_Admin.Models;
@@ -22,103 +22,128 @@ public class PlayerManagementHandler : IAdminMenuHandler
         _warnManager = warnManager;
     }
 
-    public IMenuAPI CreateMenu(IPlayer player)
+    public IMenu CreateMenu(IPlayer player, IMenu? parent = null)
     {
-        var builder = _core.MenusAPI.CreateBuilder();
+        var builder = _core.Menu.CreateMenu("cs2_admin.player_mgmt")
+            .WithTitle(T("menu_player_management"));
 
-        string title = T("menu_player_management");
-        builder.Design.SetMenuTitle(title);
+        if (parent != null)
+        {
+            builder.WithParent(parent);
+        }
 
-        AddTargetAction(builder, player, "menu_ban", "ban", _config.Permissions.Ban);
-        AddTargetAction(builder, player, "menu_warn", "warn", _config.Permissions.Warn);
-        AddTargetAction(builder, player, "menu_mute", "mute", _config.Permissions.Mute);
-        AddTargetAction(builder, player, "menu_gag", "gag", _config.Permissions.Gag);
-        AddTargetAction(builder, player, "menu_silence", "silence", _config.Permissions.Silence);
-        AddTargetAction(builder, player, "menu_kick", "kick", _config.Permissions.Kick);
+        AddTargetAction(builder, player, parent, "menu_ban", "ban", _config.Permissions.Ban);
+        AddTargetAction(builder, player, parent, "menu_warn", "warn", _config.Permissions.Warn);
+        AddTargetAction(builder, player, parent, "menu_mute", "mute", _config.Permissions.Mute);
+        AddTargetAction(builder, player, parent, "menu_gag", "gag", _config.Permissions.Gag);
+        AddTargetAction(builder, player, parent, "menu_silence", "silence", _config.Permissions.Silence);
+        AddTargetAction(builder, player, parent, "menu_kick", "kick", _config.Permissions.Kick);
 
         if (HasPermission(player, _config.Permissions.LastBan))
         {
-            var lastPlayersBtn = new ButtonMenuOption(T("menu_last_players")) { CloseAfterClick = true };
-            lastPlayersBtn.Click += (_, args) =>
+            builder.Add(new ButtonComponent(T("menu_last_players"), ctx =>
             {
                 var cmd = CommandAliasUtils.GetPreferredExecutionAlias(_config.Commands.LastBan, "lastban");
-                var caller = args.Player;
+                var caller = ctx.Player;
                 _core.Scheduler.NextTick(() => caller.ExecuteCommand(cmd));
                 return ValueTask.CompletedTask;
-            };
-            builder.AddOption(lastPlayersBtn);
+            }));
         }
 
         if (HasPermission(player, _config.Permissions.ListWarns))
         {
-            builder.AddOption(new SubmenuMenuOption(T("menu_warn_history"), () => BuildWarnHistoryPlayerMenu(player)));
+            builder.Add(new ButtonComponent(T("menu_warn_history"), ctx =>
+            {
+                var current = CreateMenu(ctx.Player, parent);
+                var sub = BuildWarnHistoryPlayerMenu(ctx.Player, current);
+                sub.Open(ctx.Player);
+                return ValueTask.CompletedTask;
+            }));
         }
 
         return builder.Build();
     }
 
-    private IMenuAPI BuildWarnHistoryPlayerMenu(IPlayer admin)
+    private IMenu BuildWarnHistoryPlayerMenu(IPlayer admin, IMenu? parent = null)
     {
-        var builder = _core.MenusAPI.CreateBuilder();
-        builder.Design.SetMenuTitle(T("menu_warn_history"));
+        var builder = _core.Menu.CreateMenu("cs2_admin.warn_history.players")
+            .WithTitle(T("menu_warn_history"));
+
+        if (parent != null)
+        {
+            builder.WithParent(parent);
+        }
 
         var players = _core.PlayerManager.GetAllPlayers().Where(p => p.IsValid && !p.IsFakeClient).ToList();
         foreach (var target in players)
         {
-            var btn = new SubmenuMenuOption(
-                target.Controller.PlayerName ?? T("player_fallback_name", target.PlayerID),
-                () => BuildWarnHistoryFilterMenu(admin, target));
-            builder.AddOption(btn);
+            var t = target;
+            var name = t.Controller.PlayerName ?? T("player_fallback_name", t.PlayerID);
+            builder.Add(new ButtonComponent(name, ctx =>
+            {
+                var current = BuildWarnHistoryPlayerMenu(ctx.Player, parent);
+                var sub = BuildWarnHistoryFilterMenu(ctx.Player, t, current);
+                sub.Open(ctx.Player);
+                return ValueTask.CompletedTask;
+            }));
         }
 
         return builder.Build();
     }
 
-    private IMenuAPI BuildWarnHistoryFilterMenu(IPlayer admin, IPlayer target)
+    private IMenu BuildWarnHistoryFilterMenu(IPlayer admin, IPlayer target, IMenu? parent = null)
     {
-        var builder = _core.MenusAPI.CreateBuilder();
-        builder.Design.SetMenuTitle(T("menu_warn_filter"));
+        var builder = _core.Menu.CreateMenu($"cs2_admin.warn_history.filter.{target.SteamID}")
+            .WithTitle(T("menu_warn_filter"));
 
-        // Warn geçmişi DB'den gelir; menü factory'sinde senkron bloklamak main thread'i
-        // dondurur. Veriyi arka planda çekip menüyü NextTick'te açıyoruz.
-        AddWarnHistoryFilterOption(builder, target, "menu_warn_filter_all", WarnHistoryFilter.All);
-        AddWarnHistoryFilterOption(builder, target, "menu_warn_filter_active", WarnHistoryFilter.Active);
-        AddWarnHistoryFilterOption(builder, target, "menu_warn_filter_expired", WarnHistoryFilter.Expired);
-        AddWarnHistoryFilterOption(builder, target, "menu_warn_filter_removed", WarnHistoryFilter.Removed);
+        if (parent != null)
+        {
+            builder.WithParent(parent);
+        }
+
+        AddWarnHistoryFilterOption(builder, target, parent, "menu_warn_filter_all", WarnHistoryFilter.All);
+        AddWarnHistoryFilterOption(builder, target, parent, "menu_warn_filter_active", WarnHistoryFilter.Active);
+        AddWarnHistoryFilterOption(builder, target, parent, "menu_warn_filter_expired", WarnHistoryFilter.Expired);
+        AddWarnHistoryFilterOption(builder, target, parent, "menu_warn_filter_removed", WarnHistoryFilter.Removed);
 
         return builder.Build();
     }
 
-    private void AddWarnHistoryFilterOption(IMenuBuilderAPI builder, IPlayer target, string labelKey, WarnHistoryFilter filter)
+    private void AddWarnHistoryFilterOption(IMenuBuilder builder, IPlayer target, IMenu? parent, string labelKey, WarnHistoryFilter filter)
     {
-        var option = new ButtonMenuOption(T(labelKey)) { CloseAfterClick = false };
-        option.Click += (_, args) =>
+        builder.Add(new ButtonComponent(T(labelKey), ctx =>
         {
-            var viewer = args.Player;
+            var viewer = ctx.Player;
             _ = Task.Run(async () =>
             {
                 var warns = await _warnManager.GetWarnHistoryAsync(target.SteamID, filter, 20);
                 _core.Scheduler.NextTick(() =>
                 {
                     if (viewer.IsValid)
-                        _core.MenusAPI.OpenMenuForPlayer(viewer, BuildWarnHistoryListMenu(target, warns));
+                    {
+                        var current = BuildWarnHistoryFilterMenu(viewer, target, parent);
+                        var sub = BuildWarnHistoryListMenu(target, warns, current);
+                        sub.Open(viewer);
+                    }
                 });
             });
             return ValueTask.CompletedTask;
-        };
-        builder.AddOption(option);
+        }));
     }
 
-    private IMenuAPI BuildWarnHistoryListMenu(IPlayer target, IReadOnlyList<Warn> warns)
+    private IMenu BuildWarnHistoryListMenu(IPlayer target, IReadOnlyList<Warn> warns, IMenu? parent = null)
     {
-        var builder = _core.MenusAPI.CreateBuilder();
-        builder.Design.SetMenuTitle(T("menu_warn_history_for", target.Controller.PlayerName ?? T("unknown")));
+        var builder = _core.Menu.CreateMenu($"cs2_admin.warn_history.list.{target.SteamID}")
+            .WithTitle(T("menu_warn_history_for", target.Controller.PlayerName ?? T("unknown")));
+
+        if (parent != null)
+        {
+            builder.WithParent(parent);
+        }
 
         if (warns.Count == 0)
         {
-            var empty = new ButtonMenuOption(T("warn_history_empty")) { CloseAfterClick = true };
-            empty.Click += (_, _) => ValueTask.CompletedTask;
-            builder.AddOption(empty);
+            builder.Add(new ButtonComponent(T("warn_history_empty"), _ => ValueTask.CompletedTask));
             return builder.Build();
         }
 
@@ -134,9 +159,7 @@ public class PlayerManagementHandler : IAdminMenuHandler
 
             var created = warn.CreatedAt.ToString("yyyy-MM-dd HH:mm");
             var text = $"{created} | {status} | {Truncate(warn.Reason, 28)}";
-            var option = new ButtonMenuOption(text) { CloseAfterClick = true };
-            option.Click += (_, _) => ValueTask.CompletedTask;
-            builder.AddOption(option);
+            builder.Add(new ButtonComponent(text, _ => ValueTask.CompletedTask));
         }
 
         return builder.Build();
@@ -152,14 +175,19 @@ public class PlayerManagementHandler : IAdminMenuHandler
         return value[..(max - 3)] + "...";
     }
 
-    private void AddTargetAction(IMenuBuilderAPI builder, IPlayer admin, string translationKey, string action, string permission)
+    private void AddTargetAction(IMenuBuilder builder, IPlayer admin, IMenu? parent, string translationKey, string action, string permission)
     {
         if (!HasPermission(admin, permission))
             return;
 
         string text = T(translationKey);
-
-        builder.AddOption(new SubmenuMenuOption(text, () => BuildSelectPlayerMenu(admin, action)));
+        builder.Add(new ButtonComponent(text, ctx =>
+        {
+            var current = CreateMenu(ctx.Player, parent);
+            var sub = BuildSelectPlayerMenu(ctx.Player, action, current);
+            sub.Open(ctx.Player);
+            return ValueTask.CompletedTask;
+        }));
     }
 
     private bool HasPermission(IPlayer player, string permission)
@@ -168,137 +196,118 @@ public class PlayerManagementHandler : IAdminMenuHandler
                || _core.Permission.PlayerHasPermission(player.SteamID, _config.Permissions.AdminRoot);
     }
 
-    private IMenuAPI BuildSelectPlayerMenu(IPlayer admin, string action)
+    private IMenu BuildSelectPlayerMenu(IPlayer admin, string action, IMenu? parent = null)
     {
-        var builder = _core.MenusAPI.CreateBuilder();
-        builder.Design.SetMenuTitle(T("menu_select_player"));
+        var builder = _core.Menu.CreateMenu($"cs2_admin.select_player.{action}")
+            .WithTitle(T("menu_select_player"));
+
+        if (parent != null)
+        {
+            builder.WithParent(parent);
+        }
 
         var players = _core.PlayerManager.GetAllPlayers().Where(p => p.IsValid && p.PlayerID != admin.PlayerID && !p.IsFakeClient).ToList();
         if (players.Count == 0)
         {
-            var empty = new ButtonMenuOption(T("menu_no_players")) { CloseAfterClick = true };
-            empty.Click += (_, _) => ValueTask.CompletedTask;
-            builder.AddOption(empty);
+            builder.Add(new ButtonComponent(T("menu_no_players"), _ => ValueTask.CompletedTask));
             return builder.Build();
         }
 
         foreach (var target in players)
         {
-            var fallbackName = T("player_fallback_name", target.PlayerID);
+            var t = target;
+            var fallbackName = T("player_fallback_name", t.PlayerID);
+            var name = t.Controller.PlayerName ?? fallbackName;
 
-            var button = new ButtonMenuOption(target.Controller.PlayerName ?? fallbackName) { CloseAfterClick = false };
-            button.Click += (_, args) =>
+            builder.Add(new ButtonComponent(name, ctx =>
             {
-                var adminPlayer = args.Player;
+                var adminPlayer = ctx.Player;
                 _core.Scheduler.NextTick(() =>
                 {
-                    OpenReasonMenu(adminPlayer, target, action);
+                    var current = BuildSelectPlayerMenu(adminPlayer, action, parent);
+                    OpenReasonMenu(adminPlayer, t, action, current);
                 });
                 return ValueTask.CompletedTask;
-            };
-            builder.AddOption(button);
+            }));
         }
 
         return builder.Build();
     }
 
-    private void OpenReasonMenu(IPlayer admin, IPlayer target, string action)
+    private void OpenReasonMenu(IPlayer admin, IPlayer target, string action, IMenu? parent = null)
     {
-        var builder = _core.MenusAPI.CreateBuilder();
-        builder.BindToParent(BuildSelectPlayerMenu(admin, action));
-        builder.Design.SetMenuTitle(T("menu_select_reason"));
+        var menu = BuildReasonMenu(admin, target, action, parent);
+        menu.Open(admin);
+    }
+
+    private IMenu BuildReasonMenu(IPlayer admin, IPlayer target, string action, IMenu? parent = null)
+    {
+        var builder = _core.Menu.CreateMenu($"cs2_admin.reason.{action}.{target.PlayerID}")
+            .WithTitle(T("menu_select_reason"));
+
+        if (parent != null)
+        {
+            builder.WithParent(parent);
+        }
 
         var reasons = GetReasonsForAction(action);
         foreach (var reason in reasons)
         {
-            var option = new ButtonMenuOption(reason) { CloseAfterClick = false };
-            option.Click += (_, args) =>
+            var r = reason;
+            builder.Add(new ButtonComponent(r, ctx =>
             {
-                var adminPlayer = admin;
+                var adminPlayer = ctx.Player;
                 _core.Scheduler.NextTick(() =>
                 {
                     if (action == "kick")
                     {
-                        ExecuteKick(adminPlayer, target, reason);
+                        ExecuteKick(adminPlayer, target, r);
                     }
                     else if (action == "warn")
                     {
-                        ExecuteWarn(adminPlayer, target, reason);
+                        ExecuteWarn(adminPlayer, target, r);
                     }
                     else
                     {
-                        OpenDurationMenu(adminPlayer, target, action, reason);
+                        var current = BuildReasonMenu(adminPlayer, target, action, parent);
+                        OpenDurationMenu(adminPlayer, target, action, r, current);
                     }
                 });
                 return ValueTask.CompletedTask;
-            };
-            builder.AddOption(option);
+            }));
         }
 
-        _core.MenusAPI.OpenMenuForPlayer(admin, builder.Build());
+        return builder.Build();
     }
 
-    private void OpenDurationMenu(IPlayer admin, IPlayer target, string action, string reason)
+    private void OpenDurationMenu(IPlayer admin, IPlayer target, string action, string reason, IMenu? parent = null)
     {
-        var builder = _core.MenusAPI.CreateBuilder();
-        builder.BindToParent(BuildReasonMenu(admin, target, action));
-        builder.Design.SetMenuTitle(T("menu_select_duration"));
+        var builder = _core.Menu.CreateMenu($"cs2_admin.duration.{action}.{target.PlayerID}")
+            .WithTitle(T("menu_select_duration"));
+
+        if (parent != null)
+        {
+            builder.WithParent(parent);
+        }
 
         foreach (var item in _config.Sanctions.Durations)
         {
             var label = item.Name;
             var minutes = item.Minutes;
-            var option = new ButtonMenuOption(label) { CloseAfterClick = false };
-            option.Click += (_, args) =>
+            builder.Add(new ButtonComponent(label, ctx =>
             {
-                var adminPlayer = args.Player;
+                var adminPlayer = ctx.Player;
                 _core.Scheduler.NextTick(() => ExecuteTimedAction(adminPlayer, target, action, minutes, reason));
                 return ValueTask.CompletedTask;
-            };
-            builder.AddOption(option);
+            }));
         }
 
-        _core.MenusAPI.OpenMenuForPlayer(admin, builder.Build());
+        builder.Build().Open(admin);
     }
 
     private IReadOnlyList<string> GetReasonsForAction(string action)
     {
         return _config.Sanctions.Reasons;
-    }
-
-    private IMenuAPI BuildReasonMenu(IPlayer admin, IPlayer target, string action)
-    {
-        var builder = _core.MenusAPI.CreateBuilder();
-        builder.Design.SetMenuTitle(T("menu_select_reason"));
-
-        var reasons = GetReasonsForAction(action);
-        foreach (var reason in reasons)
-        {
-            var option = new ButtonMenuOption(reason) { CloseAfterClick = false };
-            option.Click += (_, args) =>
-            {
-                var adminPlayer = admin;
-                _core.Scheduler.NextTick(() =>
-                {
-                    if (action == "kick")
-                    {
-                        ExecuteKick(adminPlayer, target, reason);
-                    }
-                    else if (action == "warn")
-                    {
-                        ExecuteWarn(adminPlayer, target, reason);
-                    }
-                    else
-                    {
-                        OpenDurationMenu(adminPlayer, target, action, reason);
-                    }
-                });
-                return ValueTask.CompletedTask;
-            };
-            builder.AddOption(option);
-        }
-
-        return builder.Build();
     }
 
     private void ExecuteKick(IPlayer admin, IPlayer target, string reason)
@@ -313,8 +322,6 @@ public class PlayerManagementHandler : IAdminMenuHandler
         var duration = minutes <= 0 ? -1 : minutes;
         var targetId = target.PlayerID;
 
-        // Kanonik komut adını kullan (RegisterCommands'taki sabit adlar). Config alias'ı/FirstOrDefault
-        // değil; çünkü konsol komutu olarak sadece "sw_<kanonik>" kayıtlıdır.
         string? cmdName = action switch
         {
             "ban" => "ban",
@@ -348,7 +355,7 @@ public class PlayerManagementHandler : IAdminMenuHandler
                 return;
             }
 
-            _core.MenusAPI.OpenMenuForPlayer(admin, BuildSelectPlayerMenu(admin, action));
+            BuildSelectPlayerMenu(admin, action).Open(admin);
         }
 
         _core.Scheduler.DelayBySeconds(0.06f, OpenRelevantMenu);
@@ -372,7 +379,7 @@ public class PlayerManagementHandler : IAdminMenuHandler
                 return;
             }
 
-            _core.MenusAPI.OpenMenuForPlayer(admin, BuildSelectPlayerMenu(admin, action));
+            BuildSelectPlayerMenu(admin, action).Open(admin);
         });
     }
 

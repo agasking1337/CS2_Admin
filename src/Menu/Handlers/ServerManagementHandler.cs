@@ -1,7 +1,7 @@
 using SwiftlyS2.Shared;
-using SwiftlyS2.Shared.Menus;
+using SwiftlyS2.Shared.Menu;
+using SwiftlyS2.Shared.Menu.Components;
 using SwiftlyS2.Shared.Players;
-using SwiftlyS2.Core.Menus.OptionsBase;
 using CS2_Admin.Config;
 using CS2_Admin.Utils;
 
@@ -18,184 +18,189 @@ public class ServerManagementHandler : IAdminMenuHandler
         _config = config;
     }
 
-    public IMenuAPI CreateMenu(IPlayer player)
+    public IMenu CreateMenu(IPlayer player, IMenu? parent = null)
     {
-        var builder = _core.MenusAPI.CreateBuilder();
-        var title = T("menu_server_management");
-        builder.Design.SetMenuTitle(title);
+        var builder = _core.Menu.CreateMenu("cs2_admin.server_mgmt")
+            .WithTitle(T("menu_server_management"));
 
-        // Restart game
+        if (parent != null)
+        {
+            builder.WithParent(parent);
+        }
+
         if (HasPermission(player, _config.Permissions.RestartGame))
         {
             var restartText = T("menu_restart_game");
-            builder.AddOption(new SubmenuMenuOption(restartText, () => CreateRestartGameMenu(player)));
+            builder.Add(new ButtonComponent(restartText, ctx =>
+            {
+                var current = CreateMenu(ctx.Player, parent);
+                var subMenu = CreateRestartGameMenu(ctx.Player, current);
+                subMenu.Open(ctx.Player);
+                return ValueTask.CompletedTask;
+            }));
         }
 
-        // Change map
         if (HasPermission(player, _config.Permissions.ChangeMap))
         {
             var mapText = T("menu_change_map");
-            builder.AddOption(new SubmenuMenuOption(mapText, () => CreateChangeMapMenu(player)));
+            builder.Add(new ButtonComponent(mapText, ctx =>
+            {
+                var current = CreateMenu(ctx.Player, parent);
+                var subMenu = CreateChangeMapMenu(ctx.Player, current);
+                subMenu.Open(ctx.Player);
+                return ValueTask.CompletedTask;
+            }));
         }
 
-        // Change workshop map
         if (HasPermission(player, _config.Permissions.ChangeWSMap))
         {
             var wsMapText = T("menu_change_ws_map");
-            builder.AddOption(new SubmenuMenuOption(wsMapText, () => CreateChangeWSMapMenu(player)));
+            builder.Add(new ButtonComponent(wsMapText, ctx =>
+            {
+                var current = CreateMenu(ctx.Player, parent);
+                var subMenu = CreateChangeWSMapMenu(ctx.Player, current);
+                subMenu.Open(ctx.Player);
+                return ValueTask.CompletedTask;
+            }));
         }
 
         if (HasPermission(player, _config.Permissions.HeadshotMode))
         {
-            var hsOnText = T("menu_headshot_on");
-            var hsOn = new ButtonMenuOption(hsOnText) { CloseAfterClick = true };
-            hsOn.Click += (_, args) =>
+            builder.Add(new ButtonComponent(T("menu_headshot_on"), ctx =>
             {
-                var caller = args.Player;
+                var caller = ctx.Player;
                 var cmd = CommandAliasUtils.GetPreferredExecutionAlias(_config.Commands.HeadshotOn, "hson");
                 _core.Scheduler.NextTick(() => caller.ExecuteCommand(cmd));
                 return ValueTask.CompletedTask;
-            };
-            builder.AddOption(hsOn);
+            }));
 
-            var hsOffText = T("menu_headshot_off");
-            var hsOff = new ButtonMenuOption(hsOffText) { CloseAfterClick = true };
-            hsOff.Click += (_, args) =>
+            builder.Add(new ButtonComponent(T("menu_headshot_off"), ctx =>
             {
-                var caller = args.Player;
+                var caller = ctx.Player;
                 var cmd = CommandAliasUtils.GetPreferredExecutionAlias(_config.Commands.HeadshotOff, "hsoff");
                 _core.Scheduler.NextTick(() => caller.ExecuteCommand(cmd));
                 return ValueTask.CompletedTask;
-            };
-            builder.AddOption(hsOff);
+            }));
         }
 
         if (HasPermission(player, _config.Permissions.BunnyHop))
         {
-            var bunnyOnText = T("menu_bunny_on");
-            var bunnyOn = new ButtonMenuOption(bunnyOnText) { CloseAfterClick = true };
-            bunnyOn.Click += (_, args) =>
+            builder.Add(new ButtonComponent(T("menu_bunny_on"), ctx =>
             {
-                var caller = args.Player;
+                var caller = ctx.Player;
                 var cmd = CommandAliasUtils.GetPreferredExecutionAlias(_config.Commands.BunnyOn, "bunnyon");
                 _core.Scheduler.NextTick(() => caller.ExecuteCommand(cmd));
                 return ValueTask.CompletedTask;
-            };
-            builder.AddOption(bunnyOn);
+            }));
 
-            var bunnyOffText = T("menu_bunny_off");
-            var bunnyOff = new ButtonMenuOption(bunnyOffText) { CloseAfterClick = true };
-            bunnyOff.Click += (_, args) =>
+            builder.Add(new ButtonComponent(T("menu_bunny_off"), ctx =>
             {
-                var caller = args.Player;
+                var caller = ctx.Player;
                 var cmd = CommandAliasUtils.GetPreferredExecutionAlias(_config.Commands.BunnyOff, "bunnyoff");
                 _core.Scheduler.NextTick(() => caller.ExecuteCommand(cmd));
                 return ValueTask.CompletedTask;
-            };
-            builder.AddOption(bunnyOff);
+            }));
         }
 
         if (HasPermission(player, _config.Permissions.RespawnMode))
         {
-            var respawnOnText = T("menu_respawn_on");
-            var respawnOn = new ButtonMenuOption(respawnOnText) { CloseAfterClick = true };
-            respawnOn.Click += (_, args) =>
+            builder.Add(new ButtonComponent(T("menu_respawn_on"), ctx =>
             {
-                var caller = args.Player;
+                var caller = ctx.Player;
                 var cmd = CommandAliasUtils.GetPreferredExecutionAlias(_config.Commands.RespawnOn, "respawnon");
                 _core.Scheduler.NextTick(() => caller.ExecuteCommand(cmd));
                 return ValueTask.CompletedTask;
-            };
-            builder.AddOption(respawnOn);
+            }));
 
-            var respawnOffText = T("menu_respawn_off");
-            var respawnOff = new ButtonMenuOption(respawnOffText) { CloseAfterClick = true };
-            respawnOff.Click += (_, args) =>
+            builder.Add(new ButtonComponent(T("menu_respawn_off"), ctx =>
             {
-                var caller = args.Player;
+                var caller = ctx.Player;
                 var cmd = CommandAliasUtils.GetPreferredExecutionAlias(_config.Commands.RespawnOff, "respawnoff");
                 _core.Scheduler.NextTick(() => caller.ExecuteCommand(cmd));
                 return ValueTask.CompletedTask;
-            };
-            builder.AddOption(respawnOff);
+            }));
         }
 
         return builder.Build();
     }
 
-    private IMenuAPI CreateRestartGameMenu(IPlayer player)
+    private IMenu CreateRestartGameMenu(IPlayer player, IMenu? parent = null)
     {
-        var builder = _core.MenusAPI.CreateBuilder();
-        var title = T("menu_restart_game");
-        builder.Design.SetMenuTitle(title);
+        var builder = _core.Menu.CreateMenu("cs2_admin.server_mgmt.restart")
+            .WithTitle(T("menu_restart_game"));
 
-        // Select seconds (1-10)
-        var delayText = T("menu_restart_delay");
-        var slider = new SliderMenuOption(delayText, 1, 10, 2, 1);
-        builder.AddOption(slider);
-
-        var nowText = T("menu_restart_now");
-        var btn = new ButtonMenuOption(nowText) { CloseAfterClick = true };
-        btn.Click += (_, args) =>
+        if (parent != null)
         {
-            var caller = args.Player;
-            var seconds = (int)slider.GetValue(caller);
+            builder.WithParent(parent);
+        }
+
+        var delay = 2;
+        builder.Add(new SliderComponent(T("menu_restart_delay"), 1, 10, 2, 1, change =>
+        {
+            delay = (int)change.NewValue;
+        }));
+
+        builder.Add(new ButtonComponent(T("menu_restart_now"), ctx =>
+        {
+            var caller = ctx.Player;
             var cmd = CommandAliasUtils.GetPreferredExecutionAlias(_config.Commands.RestartGame, "rr");
-            _core.Scheduler.NextTick(() => caller.ExecuteCommand($"{cmd} {seconds}"));
+            _core.Scheduler.NextTick(() => caller.ExecuteCommand($"{cmd} {delay}"));
             return ValueTask.CompletedTask;
-        };
-        builder.AddOption(btn);
+        }));
 
         return builder.Build();
     }
 
-    private IMenuAPI CreateChangeMapMenu(IPlayer player)
+    private IMenu CreateChangeMapMenu(IPlayer player, IMenu? parent = null)
     {
-        var builder = _core.MenusAPI.CreateBuilder();
-        var title = T("menu_change_map");
-        builder.Design.SetMenuTitle(title);
+        var builder = _core.Menu.CreateMenu("cs2_admin.server_mgmt.maps")
+            .WithTitle(T("menu_change_map"));
+
+        if (parent != null)
+        {
+            builder.WithParent(parent);
+        }
 
         if (_config.GameMaps.Maps != null)
         {
             foreach (var map in _config.GameMaps.Maps)
             {
-                var btn = new ButtonMenuOption(map.Value) { CloseAfterClick = true };
-                btn.Click += (_, args) =>
+                var mapKey = map.Key;
+                builder.Add(new ButtonComponent(map.Value, ctx =>
                 {
-                    var caller = args.Player;
+                    var caller = ctx.Player;
                     var cmd = CommandAliasUtils.GetPreferredExecutionAlias(_config.Commands.ChangeMap, "map");
-                    _core.Scheduler.NextTick(() => caller.ExecuteCommand($"{cmd} {map.Key}"));
+                    _core.Scheduler.NextTick(() => caller.ExecuteCommand($"{cmd} {mapKey}"));
                     return ValueTask.CompletedTask;
-                };
-                builder.AddOption(btn);
+                }));
             }
         }
 
         return builder.Build();
     }
 
-    private IMenuAPI CreateChangeWSMapMenu(IPlayer player)
+    private IMenu CreateChangeWSMapMenu(IPlayer player, IMenu? parent = null)
     {
-        var builder = _core.MenusAPI.CreateBuilder();
-        var title = T("menu_change_ws_map");
-        builder.Design.SetMenuTitle(title);
+        var builder = _core.Menu.CreateMenu("cs2_admin.server_mgmt.wsmaps")
+            .WithTitle(T("menu_change_ws_map"));
+
+        if (parent != null)
+        {
+            builder.WithParent(parent);
+        }
 
         if (_config.WorkshopMaps.Maps != null)
         {
             foreach (var map in _config.WorkshopMaps.Maps)
             {
-                var displayName = map.Key;
                 var workshopId = map.Value;
-
-                var btn = new ButtonMenuOption(displayName) { CloseAfterClick = true };
-                btn.Click += (_, args) =>
+                builder.Add(new ButtonComponent(map.Key, ctx =>
                 {
-                    var caller = args.Player;
+                    var caller = ctx.Player;
                     var cmd = CommandAliasUtils.GetPreferredExecutionAlias(_config.Commands.ChangeWSMap, "wsmap");
                     _core.Scheduler.NextTick(() => caller.ExecuteCommand($"{cmd} {workshopId}"));
                     return ValueTask.CompletedTask;
-                };
-                builder.AddOption(btn);
+                }));
             }
         }
 
@@ -221,5 +226,3 @@ public class ServerManagementHandler : IAdminMenuHandler
         }
     }
 }
-
-

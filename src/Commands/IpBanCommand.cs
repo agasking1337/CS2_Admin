@@ -4,7 +4,6 @@ using CS2_Admin.Services;
 using CS2_Admin.Utils;
 using Microsoft.Extensions.Logging;
 using System.Net;
-using SwiftlyS2.Core.Menus.OptionsBase;
 using SwiftlyS2.Shared;
 using SwiftlyS2.Shared.Commands;
 using SwiftlyS2.Shared.Players;

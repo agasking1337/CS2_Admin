@@ -1,7 +1,7 @@
 using SwiftlyS2.Shared;
-using SwiftlyS2.Shared.Menus;
+using SwiftlyS2.Shared.Menu;
+using SwiftlyS2.Shared.Menu.Components;
 using SwiftlyS2.Shared.Players;
-using SwiftlyS2.Core.Menus.OptionsBase;
 using CS2_Admin.Config;
 using CS2_Admin.Database;
 using CS2_Admin.Menu.Handlers;
@@ -38,7 +38,6 @@ public class AdminMenuManager
         _tagDbManager = tagDbManager;
         _handlers = new Dictionary<string, IAdminMenuHandler>();
 
-        // Register handlers
         RegisterHandler("server_management", new ServerManagementHandler(_core, _config));
         RegisterHandler("player_management", new PlayerManagementHandler(_core, _config, _warnManager));
         RegisterHandler("admin_management", new AdminManagementHandler(_core, _config, adminDbManager, groupDbManager, adminLogManager, chatTagConfigManager));
@@ -52,33 +51,28 @@ public class AdminMenuManager
 
     public void OpenAdminMenu(IPlayer player)
     {
-        _core.MenusAPI.OpenMenuForPlayer(player, BuildAdminMenu(player));
+        var menu = BuildAdminMenu(player);
+        menu.Open(player);
     }
 
-    private IMenuAPI BuildAdminMenu(IPlayer player)
+    public IMenu BuildAdminMenu(IPlayer player)
     {
-        var builder = _core.MenusAPI.CreateBuilder();
-
-        var title = T("menu_admin_title");
-        builder.Design
-            .SetMenuTitle(title)
-            .Design.SetMenuFooterColor("#00FEED")
-            .Design.SetVisualGuideLineColor("#00FEED")
-            .Design.SetNavigationMarkerColor("#00FEED");
+        var builder = _core.Menu.CreateMenu("cs2_admin.main")
+            .WithTitle(T("menu_admin_title"));
 
         AddHandlerOption(player, builder, "server_management", "menu_server_management");
         AddHandlerOption(player, builder, "player_management", "menu_player_management");
         AddHandlerOption(player, builder, "fun_commands", "menu_fun_commands");
+
         if (HasPermission(player, _config.Permissions.AdminTime))
         {
-            var playtimeButton = new ButtonMenuOption(T("menu_admin_playtime")) { CloseAfterClick = false };
-            playtimeButton.Click += (_, args) =>
+            builder.Add(new ButtonComponent(T("menu_admin_playtime"), ctx =>
             {
-                OpenAdminPlaytimeMenu(args.Player);
+                OpenAdminPlaytimeMenu(ctx.Player);
                 return ValueTask.CompletedTask;
-            };
-            builder.AddOption(playtimeButton);
+            }));
         }
+
         if (_core.Permission.PlayerHasPermission(player.SteamID, _config.Permissions.AdminRoot))
         {
             AddHandlerOption(player, builder, "admin_management", "menu_admin_management");
@@ -87,13 +81,19 @@ public class AdminMenuManager
         return builder.Build();
     }
 
-    private void AddHandlerOption(IPlayer player, IMenuBuilderAPI builder, string key, string translationKey)
+    private void AddHandlerOption(IPlayer player, IMenuBuilder builder, string key, string translationKey)
     {
         if (!_handlers.TryGetValue(key, out var handler))
             return;
 
         var text = T(translationKey);
-        builder.AddOption(new SubmenuMenuOption(text, () => handler.CreateMenu(player)));
+        builder.Add(new ButtonComponent(text, ctx =>
+        {
+            var parentMenu = BuildAdminMenu(ctx.Player);
+            var subMenu = handler.CreateMenu(ctx.Player, parentMenu);
+            subMenu.Open(ctx.Player);
+            return ValueTask.CompletedTask;
+        }));
     }
 
     private bool HasPermission(IPlayer player, string permission)
@@ -118,15 +118,14 @@ public class AdminMenuManager
             return;
         }
 
-        var builder = _core.MenusAPI.CreateBuilder();
-        builder.BindToParent(BuildAdminMenu(player));
-        builder.Design.SetMenuTitle(T("menu_admin_playtime"));
+        var parent = BuildAdminMenu(player);
+        var builder = _core.Menu.CreateMenu("cs2_admin.playtime")
+            .WithParent(parent)
+            .WithTitle(T("menu_admin_playtime"));
 
         if (entries.Count == 0)
         {
-            var emptyButton = new ButtonMenuOption(T("admintime_no_data")) { CloseAfterClick = true };
-            emptyButton.Click += (_, _) => ValueTask.CompletedTask;
-            builder.AddOption(emptyButton);
+            builder.Add(new ButtonComponent(T("admintime_no_data"), _ => ValueTask.CompletedTask));
         }
         else
         {
@@ -134,13 +133,11 @@ public class AdminMenuManager
             {
                 var row = entries[i];
                 var text = T("admintime_menu_entry", i + 1, row.PlayerName, row.PlaytimeMinutes);
-                var button = new ButtonMenuOption(text) { CloseAfterClick = false };
-                button.Click += (_, _) => ValueTask.CompletedTask;
-                builder.AddOption(button);
+                builder.Add(new ButtonComponent(text, _ => ValueTask.CompletedTask));
             }
         }
 
-        _core.MenusAPI.OpenMenuForPlayer(player, builder.Build());
+        builder.Build().Open(player);
     }
 
     private string T(string key, params object[] args)
@@ -156,5 +153,3 @@ public class AdminMenuManager
         }
     }
 }
-
-

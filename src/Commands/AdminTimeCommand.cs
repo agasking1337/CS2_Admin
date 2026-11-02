@@ -6,7 +6,8 @@ using CS2_Admin.Utils;
 using SwiftlyS2.Shared;
 using SwiftlyS2.Shared.Commands;
 using SwiftlyS2.Shared.Players;
-using SwiftlyS2.Core.Menus.OptionsBase;
+using SwiftlyS2.Shared.Menu;
+using SwiftlyS2.Shared.Menu.Components;
 
 namespace CS2_Admin.Commands;
 
@@ -31,12 +32,8 @@ public class AdminTimeCommand : CommandBase
         _adminPlaytimeConfig = adminPlaytimeConfig;
     }
 
-
-
     public override async void Execute(ICommandContext context)
     {
-
-
         try
         {
             if (!HasPerm(context, Permissions.AdminTime))
@@ -45,7 +42,6 @@ public class AdminTimeCommand : CommandBase
                 return;
             }
 
-            // DB sorgusunu main thread'de bloklamadan bekle.
             var topAdmins = await _adminPlaytimeDbManager.GetTopAdminsAsync(_adminPlaytimeConfig.MenuTopLimit);
 
             await OnMainThreadAsync(() =>
@@ -85,14 +81,12 @@ public class AdminTimeCommand : CommandBase
 
     private void OpenPlaytimeMenu(IPlayer player, IReadOnlyList<AdminPlaytime> entries)
     {
-        var builder = Core.MenusAPI.CreateBuilder();
-        builder.Design.SetMenuTitle(L("menu_admin_playtime"));
+        var builder = Core.Menu.CreateMenu("cs2_admin.cmd.playtime")
+            .WithTitle(L("menu_admin_playtime"));
 
         if (entries.Count == 0)
         {
-            var emptyButton = new ButtonMenuOption(L("admintime_no_data")) { CloseAfterClick = true };
-            emptyButton.Click += (_, _) => ValueTask.CompletedTask;
-            builder.AddOption(emptyButton);
+            builder.Add(new ButtonComponent(L("admintime_no_data"), _ => ValueTask.CompletedTask));
         }
         else
         {
@@ -100,12 +94,10 @@ public class AdminTimeCommand : CommandBase
             {
                 var row = entries[i];
                 var text = L("admintime_menu_entry", i + 1, row.PlayerName, row.PlaytimeMinutes);
-                var button = new ButtonMenuOption(text) { CloseAfterClick = false };
-                button.Click += (_, _) => ValueTask.CompletedTask;
-                builder.AddOption(button);
+                builder.Add(new ButtonComponent(text, _ => ValueTask.CompletedTask));
             }
         }
 
-        Core.MenusAPI.OpenMenuForPlayer(player, builder.Build());
+        builder.Build().Open(player);
     }
 }

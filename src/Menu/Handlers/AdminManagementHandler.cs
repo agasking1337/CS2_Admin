@@ -1,7 +1,7 @@
 using SwiftlyS2.Shared;
-using SwiftlyS2.Shared.Menus;
+using SwiftlyS2.Shared.Menu;
+using SwiftlyS2.Shared.Menu.Components;
 using SwiftlyS2.Shared.Players;
-using SwiftlyS2.Core.Menus.OptionsBase;
 using CS2_Admin.Config;
 using CS2_Admin.Database;
 using CS2_Admin.Models;
@@ -35,92 +35,109 @@ public class AdminManagementHandler : IAdminMenuHandler
         _chatTagConfigManager = chatTagConfigManager;
     }
 
-    public IMenuAPI CreateMenu(IPlayer player)
+    public IMenu CreateMenu(IPlayer player, IMenu? parent = null)
     {
-        var builder = _core.MenusAPI.CreateBuilder();
-        var title = T("menu_admin_management");
-        builder.Design.SetMenuTitle(title);
+        var builder = _core.Menu.CreateMenu("cs2_admin.admin_mgmt")
+            .WithTitle(T("menu_admin_management"));
+
+        if (parent != null)
+        {
+            builder.WithParent(parent);
+        }
 
         if (!IsRoot(player))
         {
-            var noPermissionButton = new ButtonMenuOption(T("no_permission")) { CloseAfterClick = true };
-            noPermissionButton.Click += (_, _) => ValueTask.CompletedTask;
-            builder.AddOption(noPermissionButton);
+            builder.Add(new ButtonComponent(T("no_permission"), _ => ValueTask.CompletedTask));
             return builder.Build();
         }
 
         var addAdminText = T("menu_add_admin");
-        builder.AddOption(new SubmenuMenuOption(addAdminText, () => BuildAddAdminMenu(player)));
-
-        // Admin listesi DB'den gelir; menü factory'sinde senkron bloklamak main thread'i
-        // dondurur. Bu yüzden veriyi arka planda çekip menüyü NextTick'te açıyoruz.
-        var removeAdminText = T("menu_remove_admin");
-        var removeAdminBtn = new ButtonMenuOption(removeAdminText) { CloseAfterClick = false };
-        removeAdminBtn.Click += (_, args) =>
+        builder.Add(new ButtonComponent(addAdminText, ctx =>
         {
-            var adminPlayer = args.Player;
+            var current = CreateMenu(ctx.Player, parent);
+            var sub = BuildAddAdminMenu(ctx.Player, current);
+            sub.Open(ctx.Player);
+            return ValueTask.CompletedTask;
+        }));
+
+        var removeAdminText = T("menu_remove_admin");
+        builder.Add(new ButtonComponent(removeAdminText, ctx =>
+        {
+            var adminPlayer = ctx.Player;
             _ = Task.Run(async () =>
             {
                 var admins = await _adminManager.GetAllAdminsAsync();
                 _core.Scheduler.NextTick(() =>
                 {
                     if (adminPlayer.IsValid)
-                        _core.MenusAPI.OpenMenuForPlayer(adminPlayer, BuildRemoveAdminMenu(adminPlayer, admins));
+                    {
+                        var current = CreateMenu(adminPlayer, parent);
+                        var sub = BuildRemoveAdminMenu(adminPlayer, admins, current);
+                        sub.Open(adminPlayer);
+                    }
                 });
             });
             return ValueTask.CompletedTask;
-        };
-        builder.AddOption(removeAdminBtn);
+        }));
 
         var listAdminsText = T("menu_list_admins");
-        var listAdminsBtn = new ButtonMenuOption(listAdminsText) { CloseAfterClick = false };
-        listAdminsBtn.Click += (_, args) =>
+        builder.Add(new ButtonComponent(listAdminsText, ctx =>
         {
-            var adminPlayer = args.Player;
+            var adminPlayer = ctx.Player;
             _ = Task.Run(async () =>
             {
                 var admins = await _adminManager.GetAllAdminsAsync();
                 _core.Scheduler.NextTick(() =>
                 {
                     if (adminPlayer.IsValid)
-                        _core.MenusAPI.OpenMenuForPlayer(adminPlayer, BuildListAdminsMenu(adminPlayer, admins));
+                    {
+                        var current = CreateMenu(adminPlayer, parent);
+                        var sub = BuildListAdminsMenu(adminPlayer, admins, current);
+                        sub.Open(adminPlayer);
+                    }
                 });
             });
             return ValueTask.CompletedTask;
-        };
-        builder.AddOption(listAdminsBtn);
+        }));
 
         return builder.Build();
     }
 
     private bool IsRoot(IPlayer player) => _core.Permission.PlayerHasPermission(player.SteamID, _config.Permissions.AdminRoot);
 
-    private IMenuAPI BuildAddAdminMenu(IPlayer admin)
+    private IMenu BuildAddAdminMenu(IPlayer admin, IMenu? parent = null)
     {
-        var builder = _core.MenusAPI.CreateBuilder();
-        var title = T("menu_select_player_add");
-        builder.Design.SetMenuTitle(title);
+        var builder = _core.Menu.CreateMenu("cs2_admin.add_admin")
+            .WithTitle(T("menu_select_player_add"));
+
+        if (parent != null)
+        {
+            builder.WithParent(parent);
+        }
 
         var players = _core.PlayerManager.GetAllPlayers().Where(p => p.IsValid).ToList();
         foreach (var target in players)
         {
-            var fallbackName = T("player_fallback_name", target.PlayerID);
-            var btn = new ButtonMenuOption(target.Controller.PlayerName ?? fallbackName) { CloseAfterClick = false };
-            btn.Click += (_, args) =>
+            var t = target;
+            var fallbackName = T("player_fallback_name", t.PlayerID);
+            var btnText = t.Controller.PlayerName ?? fallbackName;
+            builder.Add(new ButtonComponent(btnText, ctx =>
             {
-                var adminPlayer = args.Player;
-                _core.Scheduler.NextTick(() => OpenAddAdminGroupMenu(adminPlayer, target));
+                var adminPlayer = ctx.Player;
+                _core.Scheduler.NextTick(() =>
+                {
+                    var current = BuildAddAdminMenu(adminPlayer, parent);
+                    OpenAddAdminGroupMenu(adminPlayer, t, current);
+                });
                 return ValueTask.CompletedTask;
-            };
-            builder.AddOption(btn);
+            }));
         }
 
         return builder.Build();
     }
 
-    private void OpenAddAdminGroupMenu(IPlayer admin, IPlayer target)
+    private void OpenAddAdminGroupMenu(IPlayer admin, IPlayer target, IMenu? parent = null)
     {
-        // Grup listesini main thread'i bloklamadan çek, menüyü main thread'de aç.
         _ = Task.Run(async () =>
         {
             var groups = await _groupManager.GetAllGroupsAsync();
@@ -129,58 +146,60 @@ public class AdminManagementHandler : IAdminMenuHandler
                 if (!admin.IsValid)
                     return;
 
-                var builder = _core.MenusAPI.CreateBuilder();
-                builder.BindToParent(BuildAddAdminMenu(admin));
-                builder.Design.SetMenuTitle(T("menu_select_group"));
+                var builder = _core.Menu.CreateMenu($"cs2_admin.add_admin_group.{target.PlayerID}")
+                    .WithTitle(T("menu_select_group"));
+
+                if (parent != null)
+                {
+                    builder.WithParent(parent);
+                }
 
                 foreach (var group in groups)
                 {
-                    var groupBtn = new ButtonMenuOption(T("menu_group_with_immunity", group.Name, group.Immunity)) { CloseAfterClick = true };
-                    groupBtn.Click += (_, args) =>
+                    var g = group;
+                    builder.Add(new ButtonComponent(T("menu_group_with_immunity", g.Name, g.Immunity), ctx =>
                     {
-                        var adminPlayer = args.Player;
-                        _core.Scheduler.NextTick(() => ExecuteAddAdminWithGroup(adminPlayer, target, group.Name));
+                        var adminPlayer = ctx.Player;
+                        _core.Scheduler.NextTick(() => ExecuteAddAdminWithGroup(adminPlayer, target, g.Name));
                         return ValueTask.CompletedTask;
-                    };
-                    builder.AddOption(groupBtn);
+                    }));
                 }
 
                 if (groups.Count == 0)
                 {
-                    var empty = new ButtonMenuOption(T("menu_no_groups")) { CloseAfterClick = true };
-                    empty.Click += (_, _) => ValueTask.CompletedTask;
-                    builder.AddOption(empty);
+                    builder.Add(new ButtonComponent(T("menu_no_groups"), _ => ValueTask.CompletedTask));
                 }
 
-                _core.MenusAPI.OpenMenuForPlayer(admin, builder.Build());
+                builder.Build().Open(admin);
             });
         });
     }
 
-    private IMenuAPI BuildRemoveAdminMenu(IPlayer admin, List<Admin> admins)
+    private IMenu BuildRemoveAdminMenu(IPlayer admin, List<Admin> admins, IMenu? parent = null)
     {
-        var builder = _core.MenusAPI.CreateBuilder();
-        var title = T("menu_select_admin_remove");
-        builder.Design.SetMenuTitle(title);
+        var builder = _core.Menu.CreateMenu("cs2_admin.remove_admin")
+            .WithTitle(T("menu_select_admin_remove"));
+
+        if (parent != null)
+        {
+            builder.WithParent(parent);
+        }
 
         if (admins.Count == 0)
         {
-            var empty = new ButtonMenuOption(T("menu_no_admins")) { CloseAfterClick = true };
-            empty.Click += (_, _) => ValueTask.CompletedTask;
-            builder.AddOption(empty);
+            builder.Add(new ButtonComponent(T("menu_no_admins"), _ => ValueTask.CompletedTask));
             return builder.Build();
         }
 
         foreach (var target in admins)
         {
-            var btn = new ButtonMenuOption(T("menu_admin_list_entry", target.Name, target.Id, target.SteamId)) { CloseAfterClick = true };
-            btn.Click += (_, args) =>
+            var t = target;
+            builder.Add(new ButtonComponent(T("menu_admin_list_entry", t.Name, t.Id, t.SteamId), ctx =>
             {
-                var adminPlayer = args.Player;
-                _core.Scheduler.NextTick(() => ExecuteRemoveAdmin(adminPlayer, target.SteamId));
+                var adminPlayer = ctx.Player;
+                _core.Scheduler.NextTick(() => ExecuteRemoveAdmin(adminPlayer, t.SteamId));
                 return ValueTask.CompletedTask;
-            };
-            builder.AddOption(btn);
+            }));
         }
 
         return builder.Build();
@@ -193,7 +212,7 @@ public class AdminManagementHandler : IAdminMenuHandler
 
         if (!IsRoot(admin))
         {
-            admin.SendChat($" \x02{T("prefix")}\x01 {T("no_permission")}");
+            admin.SendChat($" {T("prefix")} {T("no_permission")}");
             return;
         }
 
@@ -216,15 +235,15 @@ public class AdminManagementHandler : IAdminMenuHandler
 
             if (!success)
             {
-                _core.Scheduler.NextTick(() => admin.SendChat($" \x02{T("prefix")}\x01 {T("addadmin_failed")}"));
+                _core.Scheduler.NextTick(() => admin.SendChat($" {T("prefix")} {T("addadmin_failed")}"));
                 return;
             }
 
             var effectiveFlags = await _adminManager.GetEffectiveFlagsAsync(targetSteamId);
             _core.Scheduler.NextTick(() =>
             {
-                admin.SendChat($" \x02{T("prefix")}\x01 {T("addadmin_success", targetName, targetSteamId, string.Join(",", effectiveFlags))}");
-                target.SendChat($" \x02{T("prefix")}\x01 {T("addadmin_granted")}");
+                admin.SendChat($" {T("prefix")} {T("addadmin_success", targetName, targetSteamId, string.Join(",", effectiveFlags))}");
+                target.SendChat($" {T("prefix")} {T("addadmin_granted")}");
                 if (_config.Tags.Enabled && _chatTagConfigManager.Config.ScoreboardEnabled &&
                     _chatTagConfigManager.Config.Groups.ContainsKey(groupName))
                 {
@@ -250,7 +269,7 @@ public class AdminManagementHandler : IAdminMenuHandler
     {
         if (!IsRoot(admin))
         {
-            admin.SendChat($" \x02{T("prefix")}\x01 {T("no_permission")}");
+            admin.SendChat($" {T("prefix")} {T("no_permission")}");
             return;
         }
 
@@ -262,7 +281,7 @@ public class AdminManagementHandler : IAdminMenuHandler
     {
         if (!IsRoot(admin))
         {
-            admin.SendChat($" \x02{T("prefix")}\x01 {T("no_permission")}");
+            admin.SendChat($" {T("prefix")} {T("no_permission")}");
             return;
         }
 
@@ -270,25 +289,26 @@ public class AdminManagementHandler : IAdminMenuHandler
         _core.Scheduler.NextTick(() => admin.ExecuteCommand(cmd));
     }
 
-    private IMenuAPI BuildListAdminsMenu(IPlayer admin, List<Admin> admins)
+    private IMenu BuildListAdminsMenu(IPlayer admin, List<Admin> admins, IMenu? parent = null)
     {
-        var builder = _core.MenusAPI.CreateBuilder();
-        builder.Design.SetMenuTitle(T("menu_list_admins"));
+        var builder = _core.Menu.CreateMenu("cs2_admin.list_admins")
+            .WithTitle(T("menu_list_admins"));
+
+        if (parent != null)
+        {
+            builder.WithParent(parent);
+        }
 
         if (admins.Count == 0)
         {
-            var empty = new ButtonMenuOption(T("menu_no_admins")) { CloseAfterClick = true };
-            empty.Click += (_, _) => ValueTask.CompletedTask;
-            builder.AddOption(empty);
+            builder.Add(new ButtonComponent(T("menu_no_admins"), _ => ValueTask.CompletedTask));
             return builder.Build();
         }
 
         foreach (var item in admins)
         {
             var title = T("menu_admin_list_entry", item.Name, item.Id, item.SteamId);
-            var detail = new ButtonMenuOption(title) { CloseAfterClick = false };
-            detail.Click += (_, _) => ValueTask.CompletedTask;
-            builder.AddOption(detail);
+            builder.Add(new ButtonComponent(title, _ => ValueTask.CompletedTask));
         }
 
         return builder.Build();
@@ -307,5 +327,3 @@ public class AdminManagementHandler : IAdminMenuHandler
         }
     }
 }
-
-
