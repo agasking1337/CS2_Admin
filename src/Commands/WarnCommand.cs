@@ -2,12 +2,13 @@ using CS2_Admin.Config;
 using CS2_Admin.Database;
 using CS2_Admin.Utils;
 using Microsoft.Extensions.Logging;
-using SwiftlyS2.Core.Menus.OptionsBase;
 using SwiftlyS2.Shared;
 using SwiftlyS2.Shared.Commands;
 using SwiftlyS2.Shared.Players;
-
+using SwiftlyS2.Shared.Menu;
+using SwiftlyS2.Shared.Menu.Components;
 using CS2_Admin.Services;
+
 namespace CS2_Admin.Commands;
 
 public class WarnCommand : CommandBase
@@ -117,7 +118,7 @@ public class WarnCommand : CommandBase
                         onlineTarget,
                         Messages,
                         $"<font color='#ffd700'><b>{L("warned_personal_html")}</b></font><br><br>{L("label_reason")}: <font color='#ffffff'>{reason}</font>",
-                        $" \x02{L("prefix")}\x01 {L("warned_personal_chat", reason)}");
+                        $" {L("prefix")} {L("warned_personal_chat", reason)}");
                 }
             });
 
@@ -151,13 +152,13 @@ public class WarnCommand : CommandBase
 
     private void OpenWarnTargetMenu(IPlayer reporter)
     {
-        Core.MenusAPI.OpenMenuForPlayer(reporter, BuildWarnTargetMenu(reporter));
+        BuildWarnTargetMenu(reporter).Open(reporter);
     }
 
-    private SwiftlyS2.Shared.Menus.IMenuAPI BuildWarnTargetMenu(IPlayer reporter)
+    private IMenu BuildWarnTargetMenu(IPlayer reporter)
     {
-        var builder = Core.MenusAPI.CreateBuilder();
-        builder.Design.SetMenuTitle(SafeLocalize("menu_select_player", "Select Player"));
+        var builder = Core.Menu.CreateMenu("cs2_admin.warn.targets")
+            .WithTitle(SafeLocalize("menu_select_player", "Select Player"));
 
         var onlinePlayers = Core.PlayerManager
             .GetAllPlayers()
@@ -167,9 +168,7 @@ public class WarnCommand : CommandBase
 
         if (onlinePlayers.Count == 0)
         {
-            var emptyButton = new ButtonMenuOption(SafeLocalize("menu_no_players", "No players found")) { CloseAfterClick = true };
-            emptyButton.Click += (_, _) => ValueTask.CompletedTask;
-            builder.AddOption(emptyButton);
+            builder.Add(new ButtonComponent(SafeLocalize("menu_no_players", "No players found"), _ => ValueTask.CompletedTask));
             return builder.Build();
         }
 
@@ -179,23 +178,26 @@ public class WarnCommand : CommandBase
             var optionText = $"{targetName} (#{target.PlayerID})";
             var snapshot = new WarnTarget(target.SteamID, targetName);
 
-            var option = new ButtonMenuOption(optionText) { CloseAfterClick = true };
-            option.Click += (_, args) =>
+            builder.Add(new ButtonComponent(optionText, ctx =>
             {
-                OpenWarnReasonMenu(args.Player, snapshot);
+                var parent = BuildWarnTargetMenu(ctx.Player);
+                OpenWarnReasonMenu(ctx.Player, snapshot, parent);
                 return ValueTask.CompletedTask;
-            };
-            builder.AddOption(option);
+            }));
         }
 
         return builder.Build();
     }
 
-    private void OpenWarnReasonMenu(IPlayer reporter, WarnTarget target)
+    private void OpenWarnReasonMenu(IPlayer reporter, WarnTarget target, IMenu? parent = null)
     {
-        var builder = Core.MenusAPI.CreateBuilder();
-        builder.BindToParent(BuildWarnTargetMenu(reporter));
-        builder.Design.SetMenuTitle(SafeLocalize("menu_select_reason", "Select Reason"));
+        var builder = Core.Menu.CreateMenu($"cs2_admin.warn.reason.{target.SteamId}")
+            .WithTitle(SafeLocalize("menu_select_reason", "Select Reason"));
+
+        if (parent != null)
+        {
+            builder.WithParent(parent);
+        }
 
         var reasons = _sanctions.Reasons
             .Where(r => !string.IsNullOrWhiteSpace(r))
@@ -215,16 +217,14 @@ public class WarnCommand : CommandBase
         foreach (var reason in reasons)
         {
             var selectedReason = reason;
-            var option = new ButtonMenuOption(selectedReason) { CloseAfterClick = true };
-            option.Click += (_, args) =>
+            builder.Add(new ButtonComponent(selectedReason, ctx =>
             {
-                _ = SendMenuWarnAsync(args.Player, target, selectedReason);
+                _ = SendMenuWarnAsync(ctx.Player, target, selectedReason);
                 return ValueTask.CompletedTask;
-            };
-            builder.AddOption(option);
+            }));
         }
 
-        Core.MenusAPI.OpenMenuForPlayer(reporter, builder.Build());
+        builder.Build().Open(reporter);
     }
 
     private async Task SendMenuWarnAsync(IPlayer admin, WarnTarget target, string reason)
@@ -240,7 +240,6 @@ public class WarnCommand : CommandBase
         {
             return;
         }
-
     }
 
     private async Task<bool> TryApplyWarnFromMenuAsync(WarnExecutionContext execution, int duration, string reason)
@@ -259,7 +258,7 @@ public class WarnCommand : CommandBase
                     onlineTarget,
                     Messages,
                     $"<font color='#ffd700'><b>{L("warned_personal_html")}</b></font><br><br>{L("label_reason")}: <font color='#ffffff'>{reason}</font>",
-                    $" \x02{L("prefix")}\x01 {L("warned_personal_chat", reason)}");
+                    $" {L("prefix")} {L("warned_personal_chat", reason)}");
             }
         });
 
@@ -270,4 +269,3 @@ public class WarnCommand : CommandBase
     private readonly record struct WarnTarget(ulong SteamId, string Name);
     private readonly record struct WarnExecutionContext(string AdminName, ulong AdminSteamId, string TargetName, ulong TargetSteamId);
 }
-

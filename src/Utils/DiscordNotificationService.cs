@@ -229,7 +229,7 @@ public class DiscordNotificationService
             return;
         }
 
-        try
+try
         {
             var snapshot = await BuildPlayerSnapshotAsync(
                 player.Controller.PlayerName,
@@ -237,9 +237,18 @@ public class DiscordNotificationService
                 player.IPAddress);
 
             var scopePrefix = teamOnly ? "[Team] " : string.Empty;
-            var line = $"{DiscordHelpers.CountryCodeToDiscordFlag(snapshot.CountryCode)} [{DiscordHelpers.EscapeMarkdown(GetServerLabel())}] | {scopePrefix}**{DiscordHelpers.EscapeMarkdown(snapshot.DisplayName)}** (`{snapshot.SteamId}`): {DiscordHelpers.EscapeMarkdown(trimmed)}";
-            var messageId = await _restClient.SendMessageAsync(channelId, line);
-            // _core.Logger.LogInformationIfEnabled(
+
+            var teamTag = (int)(player.Controller?.TeamNum ?? 0) switch
+            {
+                2 => "[T] ",
+                3 => "[CT] ",
+                1 => "[SPEC] ",
+                _ => string.Empty
+            };
+
+            var playerUrl = DiscordHelpers.BuildSteamProfileUrl(snapshot.SteamId);
+            var line = $"{DiscordHelpers.CountryCodeToDiscordFlag(snapshot.CountryCode)} {scopePrefix}{teamTag}[{DiscordHelpers.EscapeMarkdown(snapshot.DisplayName)}](<{playerUrl}>): {DiscordHelpers.EscapeMarkdown(trimmed)}";
+            var messageId = await _restClient.SendMessageAsync(channelId, line);            // _core.Logger.LogInformationIfEnabled(
             //    "[CS2_Admin][Debug][DiscordChat] service result steamid={SteamId} channel={ChannelId} success={Success} messageId={MessageId}",
             //    player.SteamID,
             //    DiscordHelpers.MaskChannelId(channelId),

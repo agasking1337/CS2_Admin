@@ -7,7 +7,8 @@ using Microsoft.Extensions.Logging;
 using SwiftlyS2.Shared;
 using SwiftlyS2.Shared.Commands;
 using SwiftlyS2.Shared.Players;
-using SwiftlyS2.Core.Menus.OptionsBase;
+using SwiftlyS2.Shared.Menu;
+using SwiftlyS2.Shared.Menu.Components;
 
 namespace CS2_Admin.Commands;
 
@@ -68,13 +69,13 @@ public class ReportCommand : CommandBase
 
     private void OpenReportTargetMenu(IPlayer reporter)
     {
-        Core.MenusAPI.OpenMenuForPlayer(reporter, BuildReportTargetMenu(reporter));
+        BuildReportTargetMenu(reporter).Open(reporter);
     }
 
-    private SwiftlyS2.Shared.Menus.IMenuAPI BuildReportTargetMenu(IPlayer reporter)
+    private IMenu BuildReportTargetMenu(IPlayer reporter)
     {
-        var builder = Core.MenusAPI.CreateBuilder();
-        builder.Design.SetMenuTitle(L("menu_select_player_report"));
+        var builder = Core.Menu.CreateMenu("cs2_admin.report.targets")
+            .WithTitle(L("menu_select_player_report"));
 
         var onlinePlayers = Core.PlayerManager
             .GetAllPlayers()
@@ -84,9 +85,7 @@ public class ReportCommand : CommandBase
 
         if (onlinePlayers.Count == 0)
         {
-            var emptyButton = new ButtonMenuOption(L("menu_no_players")) { CloseAfterClick = true };
-            emptyButton.Click += (_, _) => ValueTask.CompletedTask;
-            builder.AddOption(emptyButton);
+            builder.Add(new ButtonComponent(L("menu_no_players"), _ => ValueTask.CompletedTask));
             return builder.Build();
         }
 
@@ -96,23 +95,26 @@ public class ReportCommand : CommandBase
             var optionText = $"{targetName} (#{target.PlayerID})";
             var snapshot = new ReportTarget(target.SteamID, targetName);
 
-            var option = new ButtonMenuOption(optionText) { CloseAfterClick = true };
-            option.Click += (_, args) =>
+            builder.Add(new ButtonComponent(optionText, ctx =>
             {
-                OpenReportReasonMenu(args.Player, snapshot);
+                var parent = BuildReportTargetMenu(ctx.Player);
+                OpenReportReasonMenu(ctx.Player, snapshot, parent);
                 return ValueTask.CompletedTask;
-            };
-            builder.AddOption(option);
+            }));
         }
 
         return builder.Build();
     }
 
-    private void OpenReportReasonMenu(IPlayer reporter, ReportTarget target)
+    private void OpenReportReasonMenu(IPlayer reporter, ReportTarget target, IMenu? parent = null)
     {
-        var builder = Core.MenusAPI.CreateBuilder();
-        builder.BindToParent(BuildReportTargetMenu(reporter));
-        builder.Design.SetMenuTitle(L("menu_select_reason"));
+        var builder = Core.Menu.CreateMenu($"cs2_admin.report.reason.{target.SteamId}")
+            .WithTitle(L("menu_select_reason"));
+
+        if (parent != null)
+        {
+            builder.WithParent(parent);
+        }
 
         var reasons = _sanctions.Reasons
             .Where(r => !string.IsNullOrWhiteSpace(r))
@@ -133,16 +135,14 @@ public class ReportCommand : CommandBase
         foreach (var reason in reasons)
         {
             var selectedReason = reason;
-            var option = new ButtonMenuOption(selectedReason) { CloseAfterClick = true };
-            option.Click += (_, args) =>
+            builder.Add(new ButtonComponent(selectedReason, ctx =>
             {
-                _ = SendMenuReportAsync(args.Player, target, selectedReason);
+                _ = SendMenuReportAsync(ctx.Player, target, selectedReason);
                 return ValueTask.CompletedTask;
-            };
-            builder.AddOption(option);
+            }));
         }
 
-        Core.MenusAPI.OpenMenuForPlayer(reporter, builder.Build());
+        builder.Build().Open(reporter);
     }
 
     private async Task SendMenuReportAsync(IPlayer reporter, ReportTarget target, string reason)
@@ -167,8 +167,7 @@ public class ReportCommand : CommandBase
             $"target={target.Name};reason={reason};server={serverId};source=menu",
             target.Name);
 
-        // Menü click + await sonrası thread pool'dayız; SendChat main thread ister.
-        Core.Scheduler.NextTick(() => reporter.SendChat($" \x02{L("prefix")}\x01 {L("report_sent")}"));
+        Core.Scheduler.NextTick(() => reporter.SendChat($" {L("prefix")} {L("report_sent")}"));
     }
 
     private readonly record struct ReportTarget(ulong SteamId, string Name);

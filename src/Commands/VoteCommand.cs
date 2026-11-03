@@ -4,10 +4,10 @@ using CS2_Admin.Utils;
 using Microsoft.Extensions.Logging;
 using SwiftlyS2.Shared;
 using SwiftlyS2.Shared.Commands;
-using SwiftlyS2.Shared.Menus;
-using SwiftlyS2.Core.Menus.OptionsBase;
-
+using SwiftlyS2.Shared.Menu;
+using SwiftlyS2.Shared.Menu.Components;
 using CS2_Admin.Config;
+
 namespace CS2_Admin.Commands;
 
 public record ActiveVoteState
@@ -18,7 +18,7 @@ public record ActiveVoteState
     public DateTime EndsAtUtc { get; init; }
     public required string StartedBy { get; init; }
     public ulong StartedBySteamId { get; init; }
-    public IMenuAPI? Menu { get; set; }
+    public IMenu? Menu { get; set; }
 }
 
 public class VoteCommand : CommandBase
@@ -38,12 +38,8 @@ public class VoteCommand : CommandBase
     {
     }
 
-
-
     public override void Execute(ICommandContext context)
     {
-        
-
         try
         {
             var args = NormalizeArgs(context.Args, CommandsConfig.Vote);
@@ -104,8 +100,8 @@ public class VoteCommand : CommandBase
             vote.Menu = menu;
             foreach (var player in Core.PlayerManager.GetAllPlayers())
             {
-                Core.MenusAPI.OpenMenuForPlayer(player, menu);
-                player.SendChat($" \x02{L("prefix")}\x01 {L("vote_started", question)}");
+                menu.Open(player);
+                player.SendChat($" {L("prefix")} {L("vote_started", question)}");
             }
 
             ScheduleVoteMenuRefresh(vote);
@@ -119,17 +115,16 @@ public class VoteCommand : CommandBase
         }
     }
 
-    private IMenuAPI BuildVoteMenu(ActiveVoteState vote)
+    private IMenu BuildVoteMenu(ActiveVoteState vote)
     {
-        var builder = Core.MenusAPI.CreateBuilder();
-        builder.Design.SetMenuTitle(L("vote_menu_title", vote.Question));
+        var builder = Core.Menu.CreateMenu("cs2_admin.vote")
+            .WithTitle(L("vote_menu_title", vote.Question));
 
         for (var i = 0; i < vote.Answers.Count; i++)
         {
             var answerIndex = i;
             var text = $"{i + 1}. {vote.Answers[i]}";
-            var option = new ButtonMenuOption(text) { CloseAfterClick = true };
-            option.Click += (_, args) =>
+            builder.Add(new ButtonComponent(text, args =>
             {
                 var player = args.Player;
                 var playerId = player.PlayerID;
@@ -143,18 +138,16 @@ public class VoteCommand : CommandBase
                     _activeVote.VotesBySteamId[player.SteamID] = answerIndex;
                 }
 
-                // Menü click handler'ı thread pool'da çalışır; SendChat main thread ister.
                 Core.Scheduler.NextTick(() =>
                 {
                     var live = Core.PlayerManager.GetPlayer(playerId);
                     if (live?.IsValid == true)
                     {
-                        live.SendChat($" \x02{L("prefix")}\x01 {L("vote_received", vote.Answers[answerIndex])}");
+                        live.SendChat($" {L("prefix")} {L("vote_received", vote.Answers[answerIndex])}");
                     }
                 });
                 return ValueTask.CompletedTask;
-            };
-            builder.AddOption(option);
+            }));
         }
 
         return builder.Build();
@@ -195,13 +188,13 @@ public class VoteCommand : CommandBase
         var totalVotes = vote.VotesBySteamId.Count;
         foreach (var player in Core.PlayerManager.GetAllPlayers().Where(p => p.IsValid))
         {
-            player.SendChat($" \x02{L("prefix")}\x01 {L("vote_result_header", vote.Question, totalVotes)}");
+            player.SendChat($" {L("prefix")} {L("vote_result_header", vote.Question, totalVotes)}");
             for (var i = 0; i < vote.Answers.Count; i++)
             {
-                player.SendChat($" \x02{L("prefix")}\x01 {L("vote_result_line", i + 1, vote.Answers[i], counts[i])}");
+                player.SendChat($" {L("prefix")} {L("vote_result_line", i + 1, vote.Answers[i], counts[i])}");
             }
 
-            player.SendChat($" \x02{L("prefix")}\x01 {L("vote_result_winner", vote.Answers[winnerIndex], counts[winnerIndex])}");
+            player.SendChat($" {L("prefix")} {L("vote_result_winner", vote.Answers[winnerIndex], counts[winnerIndex])}");
         }
 
         _ = AdminLogManager.AddLogAsync("vote_result", vote.StartedBy, vote.StartedBySteamId, null, null, $"question={vote.Question};winner={vote.Answers[winnerIndex]};votes={counts[winnerIndex]};total={totalVotes}");
@@ -229,10 +222,10 @@ public class VoteCommand : CommandBase
                     continue;
                 }
 
-                var currentMenu = Core.MenusAPI.GetCurrentMenu(player);
-                if (currentMenu != vote.Menu)
+                var session = Core.Menu.GetSession(player);
+                if (session == null)
                 {
-                    Core.MenusAPI.OpenMenuForPlayer(player, vote.Menu);
+                    vote.Menu.Open(player);
                 }
             }
 
@@ -240,4 +233,3 @@ public class VoteCommand : CommandBase
         });
     }
 }
-
