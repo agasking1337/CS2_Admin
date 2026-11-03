@@ -237,7 +237,8 @@ public class DiscordNotificationService
                 player.IPAddress);
 
             var scopePrefix = teamOnly ? "[Team] " : string.Empty;
-            var line = $"{DiscordHelpers.CountryCodeToDiscordFlag(snapshot.CountryCode)} [{DiscordHelpers.EscapeMarkdown(GetServerLabel())}] | {scopePrefix}**{DiscordHelpers.EscapeMarkdown(snapshot.DisplayName)}** (`{snapshot.SteamId}`): {DiscordHelpers.EscapeMarkdown(trimmed)}";
+            var playerUrl = DiscordHelpers.BuildSteamProfileUrl(snapshot.SteamId);
+	    var line = $"{DiscordHelpers.CountryCodeToDiscordFlag(snapshot.CountryCode)} {scopePrefix}[{DiscordHelpers.EscapeMarkdown(snapshot.DisplayName)}](<{playerUrl}>): {DiscordHelpers.EscapeMarkdown(trimmed)}";
             var messageId = await _restClient.SendMessageAsync(channelId, line);
             // _core.Logger.LogInformationIfEnabled(
             //    "[CS2_Admin][Debug][DiscordChat] service result steamid={SteamId} channel={ChannelId} success={Success} messageId={MessageId}",
